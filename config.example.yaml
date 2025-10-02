@@ -1,0 +1,93 @@
+# Norsetinge Configuration Example
+# Copy this file to config.yaml and fill in your values
+
+# Dropbox paths (relative to project root)
+dropbox:
+  base_path: "Dropbox/Publisering/NorseTinge"
+  folder_language: "da"  # Language for folder names (see folder-aliases.yaml)
+
+  # Auto-generated from folder_language and folder-aliases.yaml:
+  # watch_dir: "udgiv"
+  # published_dir: "udgivet"
+  # rejected_dir: "afvist"
+  # revision_dir: "afventer-rettelser"
+  # draft_dir: "kladde"
+  # templates_dir: "skabeloner"
+
+# OpenRouter API
+openrouter:
+  api_key: "YOUR_OPENROUTER_API_KEY"
+  model: "anthropic/claude-3.5-sonnet"
+  endpoint: "https://openrouter.ai/api/v1"
+
+# Email notifications
+email:
+  smtp_host: "smtp.example.com"
+  smtp_port: 587
+  smtp_user: "your-email@example.com"
+  smtp_password: "YOUR_SMTP_PASSWORD"
+  from_address: "norsetinge@example.com"
+  approval_recipient: "editor@example.com"
+
+# Approval server
+approval:
+  host: "0.0.0.0"
+  port: 8080
+  tailscale_hostname: "norsetinge.tailnet-name.ts.net"
+
+# Hugo (relative to project root)
+hugo:
+  site_dir: "site"
+  public_dir: "site/public"
+
+# Image processing
+images:
+  min_width: 1200  # Minimum width for uploaded images
+  min_height: 630  # Minimum height for uploaded images
+  formats: ["webp", "jpeg", "png"]
+  sizes:
+    thumbnail: [300, 300]
+    medium: [800, 600]
+    large: [1920, 1080]
+    og: [1200, 630]  # Open Graph social media
+  quality:
+    webp: 85
+    jpeg: 90
+    png: 95
+
+  # Favicon/icon generation (if favicon/app_icon specified in frontmatter)
+  icons:
+    favicon_sizes: [16, 32, 48]  # Multi-size .ico file
+    apple_touch_icon_sizes: [180, 152, 120, 76]
+    android_icon_sizes: [192, 512]
+
+# Deployment
+deploy:
+  method: "rsync"
+  rsync_target: "user@webhost.com:/var/www/norsetinge.com/public_html/"
+  rsync_opts: "-avz --delete"
+
+# Languages
+languages:
+  - en
+  - da
+  - sv
+  - no
+  - fi
+  - de
+  - fr
+  - it
+  - es
+  - el
+  - kl
+  - is
+  - fo
+  - ru
+  - tr
+  - uk
+  - et
+  - lv
+  - lt
+  - zh
+  - ko
+  - ja

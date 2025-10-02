@@ -1,0 +1,36 @@
+# Hugo
+/site/public/
+/site/resources/
+.hugo_build.lock
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/src/vendor/
+
+# Environment
+.env
+*.env
+
+# Config with secrets
+config.yaml
+config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,3 +1,75 @@
-baseURL = 'https://example.org/'
-languageCode = 'en-us'
-title = 'My New Hugo Site'
+baseURL = 'https://norsetinge.com/'
+title = 'Norsetinge'
+defaultContentLanguage = 'en'
+defaultContentLanguageInSubdir = false
+
+[languages]
+  [languages.en]
+    languageName = 'English'
+    weight = 1
+  [languages.da]
+    languageName = 'Dansk'
+    weight = 2
+  [languages.sv]
+    languageName = 'Svenska'
+    weight = 3
+  [languages.no]
+    languageName = 'Norsk'
+    weight = 4
+  [languages.fi]
+    languageName = 'Suomi'
+    weight = 5
+  [languages.de]
+    languageName = 'Deutsch'
+    weight = 6
+  [languages.fr]
+    languageName = 'Français'
+    weight = 7
+  [languages.it]
+    languageName = 'Italiano'
+    weight = 8
+  [languages.es]
+    languageName = 'Español'
+    weight = 9
+  [languages.el]
+    languageName = 'Ελληνικά'
+    weight = 10
+  [languages.kl]
+    languageName = 'Kalaallisut'
+    weight = 11
+  [languages.is]
+    languageName = 'Íslenska'
+    weight = 12
+  [languages.fo]
+    languageName = 'Føroyskt'
+    weight = 13
+  [languages.ru]
+    languageName = 'Русский'
+    weight = 14
+  [languages.tr]
+    languageName = 'Türkçe'
+    weight = 15
+  [languages.uk]
+    languageName = 'Українська'
+    weight = 16
+  [languages.et]
+    languageName = 'Eesti'
+    weight = 17
+  [languages.lv]
+    languageName = 'Latviešu'
+    weight = 18
+  [languages.lt]
+    languageName = 'Lietuvių'
+    weight = 19
+  [languages.zh]
+    languageName = '中文'
+    weight = 20
+  [languages.ko]
+    languageName = '한국어'
+    weight = 21
+  [languages.ja]
+    languageName = '日本語'
+    weight = 22
+
+[params]
+  description = 'Automated multilingual news service'

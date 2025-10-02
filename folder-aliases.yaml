@@ -1,0 +1,27 @@
+# Folder name aliases for multilingual support
+# Add more languages as needed - OpenRouter LLM can translate on demand
+
+en:
+  draft: "drafts"
+  revision: "awaiting-revision"
+  publish: "publish"
+  published: "published"
+  rejected: "rejected"
+  update: "update"
+  templates: "templates"
+  godkendelse: "approval"
+
+da:
+  draft: "kladde"
+  revision: "afventer-rettelser"
+  publish: "udgiv"
+  published: "udgivet"
+  rejected: "afvist"
+  update: "opdater"
+  templates: "skabeloner"
+  godkendelse: "godkendelse"
+
+# Add more languages here as needed
+# sv:
+#   draft: "utkast"
+#   ...
