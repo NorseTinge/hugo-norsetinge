@@ -202,25 +202,48 @@ func (r *IMAPReader) extractArticleID(msg *imap.Message) string {
 	return articleID
 }
 
-// extractArticleIDFromText extracts Article ID from text body (#ABC123-APPR or #ABC123-REJ)
+// extractArticleIDFromText extracts Article ID from text body (#ABC123-APPR or ABC123-APPR)
 func (r *IMAPReader) extractArticleIDFromText(text string) string {
-	// Look for patterns like #ABC123-APPR or #ABC123-REJ
+	// Look for patterns like #ABC123-APPR, ABC123-APPR, #ABC123-REJ, or ABC123-REJ
 	// Convert to uppercase for matching
 	upperText := strings.ToUpper(text)
 
-	// Find #XXXXXX-APPR or #XXXXXX-REJ
+	// Find XXXXXX-APPR or XXXXXX-REJ (with or without #)
 	patterns := []string{"-APPR", "-REJ"}
 	for _, pattern := range patterns {
 		if idx := strings.Index(upperText, pattern); idx > 0 {
-			// Look backwards for the # symbol
+			// Look backwards to find start of ID
+			// ID format: 6 uppercase hex characters (A-F0-9), optionally preceded by #
 			start := idx - 1
-			for start >= 0 && upperText[start] != '#' {
+
+			// Skip backwards while we have valid hex characters
+			for start >= 0 && ((upperText[start] >= '0' && upperText[start] <= '9') ||
+			                    (upperText[start] >= 'A' && upperText[start] <= 'F')) {
 				start--
 			}
-			if start >= 0 && upperText[start] == '#' {
-				// Extract the ID (without -APPR/-REJ suffix)
-				idWithSuffix := upperText[start:idx]
-				return idWithSuffix
+
+			// Check if we have # before the ID
+			hasHash := start >= 0 && upperText[start] == '#'
+			if hasHash {
+				start-- // Include the # in the result
+			}
+
+			// Extract the ID (should be 6 characters, optionally with # prefix)
+			idStart := start + 1
+			idEnd := idx
+
+			// Verify we have a valid ID (6 hex chars)
+			if hasHash {
+				idLength := idEnd - idStart - 1 // -1 for the #
+				if idLength == 6 {
+					return upperText[idStart:idEnd]
+				}
+			} else {
+				idLength := idEnd - idStart
+				if idLength == 6 {
+					// Add # prefix if missing
+					return "#" + upperText[idStart:idEnd]
+				}
 			}
 		}
 	}
