@@ -19,23 +19,25 @@ The main technologies used in this project are:
 
 ## Building and Running
 
-The project documentation does not specify the exact commands for building and running the project. However, based on the technologies used, the following commands are likely to be relevant.
-
-**TODO:** Please fill in the specific commands for your environment.
-
 ### Go Application
 
-To build the Go application (`hugin`):
+To build the Go application (`norsetinge`):
 
 ```bash
-# TODO: Verify the path to the Go application
-go build -o hugin ./path/to/main.go
+cd /home/ubuntu/hugo-norsetinge
+go build -o norsetinge ./src/main.go
 ```
 
-To run the Go application (likely as part of the pipeline):
+To run the Go application with default config paths:
 
 ```bash
-./hugin
+./norsetinge
+```
+
+To run with custom config paths:
+
+```bash
+./norsetinge --config /path/to/config.yaml --aliases /path/to/folder-aliases.yaml
 ```
 
 ### Hugo
