@@ -45,10 +45,9 @@ func (n *NtfySender) SendApprovalNotification(title, author, previewURLPath, art
 		return nil
 	}
 
-	// Generate Tailscale preview URL
-	previewURL := fmt.Sprintf("http://%s:%d/preview/%s",
+	// Generate Tailscale preview URL (https via tailscale serve)
+	previewURL := fmt.Sprintf("https://%s/preview/%s",
 		n.cfg.Approval.TailscaleHostname,
-		n.cfg.Approval.Port,
 		previewURLPath)
 
 	msg := NtfyMessage{
@@ -69,24 +68,28 @@ func (n *NtfySender) SendApprovalNotification(title, author, previewURLPath, art
 	return n.send(msg)
 }
 
-// send sends a ntfy notification
+// send sends a ntfy notification using headers (not JSON body)
 func (n *NtfySender) send(msg NtfyMessage) error {
 	url := fmt.Sprintf("%s/%s", n.cfg.Ntfy.Server, n.cfg.Ntfy.Topic)
 
-	jsonData, err := json.Marshal(msg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal ntfy message: %w", err)
-	}
-
-	// Debug: Log the JSON being sent
-	log.Printf("📤 Sending ntfy JSON: %s", string(jsonData))
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	// Send message as body, metadata as headers
+	req, err := http.NewRequest("POST", url, bytes.NewBufferString(msg.Message))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	// Set headers according to ntfy documentation
+	req.Header.Set("Title", msg.Title)
+	req.Header.Set("Priority", fmt.Sprintf("%d", msg.Priority))
+	req.Header.Set("Tags", "newspaper")
+
+	// Add action button as JSON in header
+	if len(msg.Actions) > 0 {
+		actionsJSON, _ := json.Marshal(msg.Actions)
+		req.Header.Set("Actions", string(actionsJSON))
+	}
+
+	log.Printf("📤 Sending ntfy notification: %s", msg.Title)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

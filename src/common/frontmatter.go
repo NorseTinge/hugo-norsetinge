@@ -15,7 +15,7 @@ import (
 
 // Article represents a parsed markdown article with frontmatter
 type Article struct {
-	FilePath string
+	FilePath string `yaml:"-"` // Internal use only - do not read from YAML
 
 	// Unique identifier (auto-generated, persistent)
 	ID string `yaml:"id"`

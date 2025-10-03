@@ -39,7 +39,7 @@ email:
 approval:
   host: "0.0.0.0"
   port: 8080
-  tailscale_hostname: "norsetinge"
+  tailscale_hostname: "norsetinge.tail2d448.ts.net"
 
 # ntfy.sh push notifications
 ntfy:
@@ -51,6 +51,7 @@ ntfy:
 hugo:
   site_dir: "/home/ubuntu/hugo-norsetinge/site"
   public_dir: "/home/ubuntu/hugo-norsetinge/site/public"
+  mirror_dir: "/home/ubuntu/hugo-norsetinge/site/mirror"
 
 # Image processing
 images:
@@ -73,7 +74,20 @@ images:
     apple_touch_icon_sizes: [180, 152, 120, 76]
     android_icon_sizes: [192, 512]
 
-# Deployment
+# Git mirror configuration
+git:
+  mirror_repo: "git@github.com:username/norsetinge-mirror.git"  # Update with your private repo
+  auto_commit: false  # Disabled for testing
+
+# Rsync deployment
+rsync:
+  enabled: false  # Disabled for testing
+  host: "norsetinge.com"
+  user: "deploy"
+  target_path: "/var/www/norsetinge.com"
+  ssh_key: ""  # Optional: path to SSH key
+
+# Deployment (legacy - kept for compatibility)
 deploy:
   method: "rsync"
   rsync_target: "user@webhost.com:/var/www/norsetinge.com/public_html/"

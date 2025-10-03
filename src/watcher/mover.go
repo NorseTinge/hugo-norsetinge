@@ -109,6 +109,12 @@ func (m *Mover) ProcessArticleStatusChange(filePath string) error {
 		return fmt.Errorf("failed to parse article: %w", err)
 	}
 
+	// Ignore articles with no status set (status: unknown)
+	currentStatus := article.GetCurrentStatus()
+	if currentStatus == "unknown" {
+		return nil // No status flags set - ignore this article
+	}
+
 	// Move to appropriate folder
 	if err := m.MoveArticle(article); err != nil {
 		return fmt.Errorf("failed to move article: %w", err)

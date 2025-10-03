@@ -16,6 +16,8 @@ type Config struct {
 	Approval   ApprovalConfig   `yaml:"approval"`
 	Ntfy       NtfyConfig       `yaml:"ntfy"`
 	Hugo       HugoConfig       `yaml:"hugo"`
+	Git        GitConfig        `yaml:"git"`
+	Rsync      RsyncConfig      `yaml:"rsync"`
 	Images     ImagesConfig     `yaml:"images"`
 	Deploy     DeployConfig     `yaml:"deploy"`
 	Languages  []string         `yaml:"languages"`
@@ -62,6 +64,7 @@ type NtfyConfig struct {
 type HugoConfig struct {
 	SiteDir   string `yaml:"site_dir"`
 	PublicDir string `yaml:"public_dir"`
+	MirrorDir string `yaml:"mirror_dir"`
 }
 
 type ImagesConfig struct {
@@ -83,6 +86,19 @@ type DeployConfig struct {
 	Method      string `yaml:"method"`
 	RsyncTarget string `yaml:"rsync_target"`
 	RsyncOpts   string `yaml:"rsync_opts"`
+}
+
+type GitConfig struct {
+	MirrorRepo string `yaml:"mirror_repo"`
+	AutoCommit bool   `yaml:"auto_commit"`
+}
+
+type RsyncConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	Host       string `yaml:"host"`
+	User       string `yaml:"user"`
+	TargetPath string `yaml:"target_path"`
+	SSHKey     string `yaml:"ssh_key"`
 }
 
 // Load reads and parses the configuration file

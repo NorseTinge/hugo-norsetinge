@@ -15,6 +15,7 @@ import (
 	"norsetinge/builder"
 	"norsetinge/common"
 	"norsetinge/config"
+	"norsetinge/deployer"
 )
 
 // Server handles approval web requests
@@ -23,6 +24,7 @@ type Server struct {
 	emailSender     *EmailSender
 	ntfySender      *NtfySender
 	hugoBuilder     *builder.HugoBuilder
+	deployer        *deployer.Deployer
 	pendingArticles map[string]*PendingArticle
 	mu              sync.RWMutex
 	mover           FileMover
@@ -49,6 +51,7 @@ func NewServer(cfg *config.Config) *Server {
 		emailSender:     NewEmailSender(cfg),
 		ntfySender:      NewNtfySender(cfg),
 		hugoBuilder:     builder.NewHugoBuilder(cfg),
+		deployer:        deployer.NewDeployer(cfg),
 		pendingArticles: make(map[string]*PendingArticle),
 	}
 
@@ -72,6 +75,7 @@ func (s *Server) Start() error {
 
 	http.HandleFunc("/approve/", s.handleApproval)
 	http.HandleFunc("/action/approve/", s.handleApprove)
+	http.HandleFunc("/action/approve-deploy/", s.handleApproveAndDeploy)
 	http.HandleFunc("/action/reject/", s.handleReject)
 
 	addr := fmt.Sprintf("%s:%d", s.cfg.Approval.Host, s.cfg.Approval.Port)
@@ -152,7 +156,7 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, pending)
 }
 
-// handleApprove handles approval action
+// handleApprove handles normal approval (no immediate deploy)
 func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[len("/action/approve/"):]
 
@@ -168,22 +172,100 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Article approved: %s - continuing to translation", pending.Article.Title)
+	log.Printf("Article approved: %s - moving to udgivet/", pending.Article.Title)
+
+	// Move article to udgivet/
+	pending.Article.UpdateStatus("published")
+	if err := pending.Article.WriteFrontmatter(); err != nil {
+		log.Printf("Error updating article status: %v", err)
+		http.Error(w, "Failed to update article", http.StatusInternalServerError)
+		return
+	}
+
+	if s.mover != nil {
+		if err := s.mover.MoveArticle(pending.Article); err != nil {
+			log.Printf("Error moving article: %v", err)
+		} else {
+			log.Printf("✓ Article moved to udgivet/: %s", pending.Article.Title)
+		}
+	}
 
 	// Remove from pending list
 	if err := s.removePendingArticle(id); err != nil {
 		log.Printf("Warning: Failed to remove pending article: %v", err)
 	}
 
-	// Status is already "publish" - article stays in udgiv/ for translation
-	// No status change needed, translation will happen next
-
 	fmt.Fprintf(w, `
 		<!DOCTYPE html>
 		<html><head><meta charset="UTF-8"><title>Godkendt</title></head>
 		<body style="font-family: sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
 			<h1>✅ Artikel Godkendt!</h1>
-			<p>Artiklen vil nu blive oversat til 22 sprog og publiceret.</p>
+			<p>Artiklen er flyttet til udgivet/ og vil blive deployeret ved næste automatiske build (hver 10-15 min).</p>
+		</body></html>
+	`)
+}
+
+// handleApproveAndDeploy handles immediate approval + deploy
+func (s *Server) handleApproveAndDeploy(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Path[len("/action/approve-deploy/"):]
+
+	s.mu.Lock()
+	pending, exists := s.pendingArticles[id]
+	if exists {
+		pending.Approved = true
+	}
+	s.mu.Unlock()
+
+	if !exists {
+		http.Error(w, "Article not found", http.StatusNotFound)
+		return
+	}
+
+	log.Printf("Article approved with immediate deploy: %s", pending.Article.Title)
+
+	// 1. Move article to udgivet/
+	pending.Article.UpdateStatus("published")
+	if err := pending.Article.WriteFrontmatter(); err != nil {
+		log.Printf("Error updating article status: %v", err)
+		http.Error(w, "Failed to update article", http.StatusInternalServerError)
+		return
+	}
+
+	if s.mover != nil {
+		if err := s.mover.MoveArticle(pending.Article); err != nil {
+			log.Printf("Error moving article: %v", err)
+		} else {
+			log.Printf("✓ Article moved to udgivet/: %s", pending.Article.Title)
+		}
+	}
+
+	// Remove from pending list
+	if err := s.removePendingArticle(id); err != nil {
+		log.Printf("Warning: Failed to remove pending article: %v", err)
+	}
+
+	// 2. Build full Hugo site
+	publicDir, mirrorDir, err := s.hugoBuilder.BuildFullSite()
+	if err != nil {
+		log.Printf("Error building site: %v", err)
+		http.Error(w, "Failed to build site", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Deploy (mirror-sync + git + rsync)
+	if err := s.deployer.Deploy(publicDir, mirrorDir); err != nil {
+		log.Printf("Error deploying: %v", err)
+		http.Error(w, "Failed to deploy site", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, `
+		<!DOCTYPE html>
+		<html><head><meta charset="UTF-8"><title>Deployeret</title></head>
+		<body style="font-family: sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
+			<h1>⚡ Artikel Godkendt & Deployeret!</h1>
+			<p>Artiklen er nu live på norsetinge.com</p>
+			<p style="color: #666; font-size: 14px;">Bygget, deployeret og arkiveret i udgivet/</p>
 		</body></html>
 	`)
 }
@@ -412,6 +494,7 @@ const approvalTemplate = `
             font-weight: 600;
         }
         .approve { background: #28a745; color: white; }
+        .approve-deploy { background: #ff9800; color: white; }
         .reject { background: #dc3545; color: white; }
         .info-box {
             background: #e7f3ff;
@@ -439,8 +522,9 @@ const approvalTemplate = `
     </div>
 
     <div class="actions">
-        <a href="/action/approve/{{.ID}}" class="button approve">✅ Godkend og publicer</a>
-        <a href="/action/reject/{{.ID}}" class="button reject" onclick="return confirm('Afvis artikel?\n\nDu kan rette den i afvist/ mappen og sætte update: 1 for at sende den til godkendelse igen.')">❌ Afvis</a>
+        <a href="/action/approve/{{.ID}}" class="button approve">✅ Godkend</a>
+        <a href="/action/approve-deploy/{{.ID}}" class="button approve-deploy" onclick="return confirm('Deploy øjeblikkeligt?\n\nArtiklen vil blive bygget og deployeret med det samme.')">⚡ Godkend + Deploy Nu</a>
+        <a href="/action/reject/{{.ID}}" class="button reject" onclick="return confirm('Afvis artikel?\n\nDu kan rette den i afvist/ mappen.')">❌ Afvis</a>
     </div>
 </body>
 </html>

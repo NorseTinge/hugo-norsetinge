@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"norsetinge/approval"
+	"norsetinge/builder"
 	"norsetinge/config"
+	"norsetinge/deployer"
 	"norsetinge/watcher"
 )
 
@@ -17,8 +19,9 @@ func main() {
 	fmt.Println("Norsetinge - Automated Multilingual News Service")
 	fmt.Println("================================================")
 
-	// Load config
-	cfg, err := config.Load("../config.yaml")
+	// Load config (use absolute path)
+	configPath := "/home/ubuntu/hugo-norsetinge/config.yaml"
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
@@ -37,7 +40,8 @@ func main() {
 	}()
 
 	// Create watcher
-	w, err := watcher.NewWatcher(cfg, "../folder-aliases.yaml")
+	aliasesPath := "/home/ubuntu/hugo-norsetinge/folder-aliases.yaml"
+	w, err := watcher.NewWatcher(cfg, aliasesPath)
 	if err != nil {
 		log.Fatalf("Failed to create watcher: %v", err)
 	}
@@ -66,6 +70,34 @@ func main() {
 			}
 		}); err != nil {
 			log.Printf("IMAP monitoring failed: %v", err)
+		}
+	}()
+
+	// Start periodic build+deploy (every 10 minutes)
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+
+		hugoBuilder := builder.NewHugoBuilder(cfg)
+		dep := deployer.NewDeployer(cfg)
+
+		for range ticker.C {
+			log.Printf("⏰ Running periodic build+deploy...")
+
+			// Build full site
+			publicDir, mirrorDir, err := hugoBuilder.BuildFullSite()
+			if err != nil {
+				log.Printf("Error in periodic build: %v", err)
+				continue
+			}
+
+			// Deploy
+			if err := dep.Deploy(publicDir, mirrorDir); err != nil {
+				log.Printf("Error in periodic deploy: %v", err)
+				continue
+			}
+
+			log.Printf("✅ Periodic build+deploy completed")
 		}
 	}()
 

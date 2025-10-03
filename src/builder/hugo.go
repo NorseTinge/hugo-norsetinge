@@ -155,3 +155,82 @@ func (h *HugoBuilder) detectLanguage(article *common.Article) string {
 	// Later: detect from content or add language field to frontmatter
 	return "da"
 }
+
+// BuildFullSite builds complete Hugo site with all published articles
+// Returns paths to public and mirror directories
+func (h *HugoBuilder) BuildFullSite() (publicDir, mirrorDir string, err error) {
+	log.Printf("🔨 Building full site...")
+
+	// 1. Clean and prepare content directory
+	contentDir := filepath.Join(h.cfg.Hugo.SiteDir, "content", "articles")
+	if err := os.RemoveAll(contentDir); err != nil && !os.IsNotExist(err) {
+		return "", "", fmt.Errorf("failed to clean content directory: %w", err)
+	}
+	if err := os.MkdirAll(contentDir, 0755); err != nil {
+		return "", "", fmt.Errorf("failed to create content directory: %w", err)
+	}
+
+	// 2. Copy all published articles to Hugo content
+	publishedDir := filepath.Join(h.cfg.Dropbox.BasePath, "udgivet")
+	articles, err := h.loadPublishedArticles(publishedDir)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to load published articles: %w", err)
+	}
+
+	log.Printf("📚 Found %d published articles", len(articles))
+
+	for _, article := range articles {
+		slug := article.GetSlug()
+		articlePath := filepath.Join(contentDir, fmt.Sprintf("%s.md", slug))
+
+		if err := h.writeHugoContent(articlePath, article, h.detectLanguage(article)); err != nil {
+			return "", "", fmt.Errorf("failed to write article %s: %w", slug, err)
+		}
+		log.Printf("  ✓ Added: %s", article.Title)
+	}
+
+	// 3. Build Hugo site
+	if err := h.buildSite(); err != nil {
+		return "", "", fmt.Errorf("failed to build Hugo site: %w", err)
+	}
+
+	// 4. Return paths
+	publicDir = h.cfg.Hugo.PublicDir
+	mirrorDir = h.cfg.Hugo.MirrorDir
+
+	log.Printf("✅ Full site built successfully")
+	log.Printf("   Public:  %s", publicDir)
+	log.Printf("   Mirror:  %s", mirrorDir)
+
+	return publicDir, mirrorDir, nil
+}
+
+// loadPublishedArticles loads all articles from the published directory
+func (h *HugoBuilder) loadPublishedArticles(publishedDir string) ([]*common.Article, error) {
+	var articles []*common.Article
+
+	entries, err := os.ReadDir(publishedDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return articles, nil // No published articles yet
+		}
+		return nil, fmt.Errorf("failed to read published directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".md" {
+			continue
+		}
+
+		articlePath := filepath.Join(publishedDir, entry.Name())
+		article, err := common.ParseArticle(articlePath)
+		if err != nil {
+			log.Printf("Warning: Failed to parse %s: %v", entry.Name(), err)
+			continue
+		}
+
+		articles = append(articles, article)
+	}
+
+	return articles, nil
+}
