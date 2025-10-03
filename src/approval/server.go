@@ -183,8 +183,8 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 	}
 	delete(s.pendingArticles, id)
 
-	// Persist the change to the pending articles list on disk
-	if err := s.savePendingArticles(); err != nil {
+	// Persist the change to the pending articles list on disk (we hold lock, use NoLock version)
+	if err := s.savePendingArticlesNoLock(); err != nil {
 		log.Printf("Warning: Failed to save pending articles list: %v", err)
 	}
 	s.mu.Unlock()
