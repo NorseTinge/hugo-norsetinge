@@ -1,5 +1,7 @@
 # CLAUDE.md: Norsetinge Project Initialization
 
+> **📋 For complete change history, bug fixes, and project evolution, see [CHANGELOG.md](CHANGELOG.md)**
+
 ## Project Status Analysis (2025-10-03)
 
 **KISS Approach:** Simplified pipeline focusing on complete workflow before adding complexity.
@@ -138,3 +140,14 @@ rsync:
 - Single language (Danish/original) initially
 - Mirror provides git history and rsync source
 - All components run in LXC container "norsetinge"
+
+---
+
+## 📚 Documentation References
+
+- **[CHANGELOG.md](CHANGELOG.md)** - Complete change history, bug fixes, and project evolution
+- **[doc/project_plan.md](doc/project_plan.md)** - Original vision (22+ languages, full automation)
+- **[BUGS](BUGS)** - Bug tracking and fixes
+- **[TODO](TODO)** - Outstanding development tasks
+
+**Key Difference**: Original plan focused on multilingual translation as core feature. Current KISS approach completes single-language pipeline first, defers translation to Phase 4.
