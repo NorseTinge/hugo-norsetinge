@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"norsetinge/common"
-	"norsetinge/config"
+	n"norsetinge/src/common"
+	"norsetinge/src/config"
 )
 
 func TestNewServer(t *testing.T) {
