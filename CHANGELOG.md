@@ -1,6 +1,21 @@
 # Changelog
 
-## 2025-10-03 (Late Evening) - Architecture Decision: State Machine & ID-based System
+## 2025-10-03 (Late Evening) - Deadlock Fix & Architecture Planning
+
+### 🐛 Critical Bug Fix
+
+*   **Mutex Deadlock Fixed** (`src/approval/server.go:88-153`):
+    - **Problem**: RequestApproval() held global mutex during Hugo build (1-2 sec) and ntfy HTTP request, blocking all approve/reject actions
+    - **Symptom**: Clicking "Godkend" button would hang forever with no response
+    - **Root Cause**: handleApprove() couldn't acquire mutex while RequestApproval() held it
+    - **Fix**: Refactored RequestApproval() into 4 phases with minimal locking:
+      1. Phase 1: Check exists + reserve ID (short lock)
+      2. Phase 2: Build Hugo preview (NO LOCK - long operation)
+      3. Phase 3: Send ntfy notification (NO LOCK - HTTP request)
+      4. Phase 4: Update final data + persist (short lock)
+    - **Error handling**: Placeholder removed on failure for retry capability
+    - **Result**: Approve/reject actions now respond immediately
+    - **Documented in**: BUGS file entry #11
 
 ### 🏗️ Major Architecture Change (Planned)
 
