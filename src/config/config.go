@@ -8,7 +8,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config represents the application configuration
 type FolderAliases map[string]map[string]string
 
 // Config represents the application configuration
@@ -24,7 +23,7 @@ type Config struct {
 	Images        ImagesConfig     `yaml:"images"`
 	Deploy        DeployConfig     `yaml:"deploy"`
 	Languages     []string         `yaml:"languages"`
-	FolderAliases `yaml:"-"` // Loaded separately, suppress from main config YAML
+	Aliases       FolderAliases    `yaml:"-"` // Loaded separately
 }
 
 type DropboxConfig struct {
@@ -132,7 +131,7 @@ func Load(path string, aliasesPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to read folder aliases file: %w", err)
 	}
 
-	if err := yaml.Unmarshal(aliasesData, &cfg.FolderAliases); err != nil {
+	if err := yaml.Unmarshal(aliasesData, &cfg.Aliases); err != nil {
 		return nil, fmt.Errorf("failed to parse folder aliases: %w", err)
 	}
 

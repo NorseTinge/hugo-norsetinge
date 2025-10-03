@@ -14,14 +14,14 @@ import (
 // Mover handles moving files between folders based on status
 type Mover struct {
 	cfg     *config.Config
-	aliases FolderAliases
+	aliases config.FolderAliases
 }
 
 // NewMover creates a new file mover
 func NewMover(cfg *config.Config) (*Mover, error) {
 	return &Mover{
 		cfg:     cfg,
-		aliases: cfg.FolderAliases,
+		aliases: cfg.Aliases,
 	}, nil
 }
 
