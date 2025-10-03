@@ -1,0 +1,20 @@
+{
+  "exclude": [
+    "node_modules",
+    ".git",
+    "dist",
+    "vendor"
+  ],
+  "include": [
+    "*.go",
+    "*.js",
+    "*.ts",
+    "*.py"
+  ],
+  "languages": [
+    "go",
+    "javascript",
+    "typescript"
+  ],
+  "root": "/home/ubuntu/hugo-norsetinge"
+}
