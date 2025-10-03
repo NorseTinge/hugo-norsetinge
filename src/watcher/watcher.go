@@ -3,6 +3,7 @@ package watcher
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -88,6 +89,12 @@ func (w *Watcher) Start() error {
 	// Start event processing goroutine
 	go w.processEvents()
 
+	// Start periodic folder scanner to enforce status-based file organization
+	go w.periodicFolderScan()
+
+	// Run initial scan immediately
+	go w.scanAllFolders()
+
 	return nil
 }
 
@@ -172,8 +179,8 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 
 		// Trigger approval for publish status OR update flag
 		currentStatus := article.GetCurrentStatus()
-		if currentStatus == "publish" && w.approvalServer != nil {
-			log.Printf("Triggering approval for: %s", article.Title)
+		if (currentStatus == "publish" || currentStatus == "update") && w.approvalServer != nil {
+			log.Printf("Triggering approval for: %s (status: %s)", article.Title, currentStatus)
 			if err := w.approvalServer.RequestApproval(article); err != nil {
 				log.Printf("Failed to request approval: %v", err)
 			}
@@ -212,4 +219,100 @@ func (w *Watcher) Events() <-chan Event {
 func (w *Watcher) Stop() error {
 	close(w.events)
 	return w.watcher.Close()
+}
+
+// periodicFolderScan runs a periodic scan of all folders to enforce status-based organization
+// This ensures files are in the correct folder based on their status flags, regardless of file events
+func (w *Watcher) periodicFolderScan() {
+	ticker := time.NewTicker(2 * time.Minute) // Scan every 2 minutes
+	defer ticker.Stop()
+
+	for range ticker.C {
+		w.scanAllFolders()
+	}
+}
+
+// scanAllFolders scans all monitored folders and enforces status-based file organization
+func (w *Watcher) scanAllFolders() {
+	folders, err := w.mover.GetAllMonitoredFolders()
+	if err != nil {
+		log.Printf("Failed to get monitored folders for scan: %v", err)
+		return
+	}
+
+	log.Printf("🔍 Starting folder scan to enforce status-based organization...")
+
+	for _, folder := range folders {
+		if err := w.scanFolder(folder); err != nil {
+			log.Printf("Failed to scan folder %s: %v", folder, err)
+		}
+	}
+
+	log.Printf("✅ Folder scan complete")
+}
+
+// scanFolder scans a single folder and processes all .md files
+func (w *Watcher) scanFolder(folder string) error {
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return fmt.Errorf("failed to read directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		// Skip directories and non-.md files
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".md" {
+			continue
+		}
+
+		// Skip hidden files
+		if entry.Name()[0] == '.' {
+			continue
+		}
+
+		filePath := filepath.Join(folder, entry.Name())
+		if err := w.processArticleFile(filePath); err != nil {
+			log.Printf("Failed to process %s: %v", filePath, err)
+		}
+	}
+
+	return nil
+}
+
+// processArticleFile processes a single article file and ensures it's in the correct folder
+func (w *Watcher) processArticleFile(filePath string) error {
+	// Parse the article
+	article, err := common.ParseArticle(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to parse article: %w", err)
+	}
+
+	// Process status changes (will move file if needed)
+	if err := w.mover.ProcessArticleStatusChange(filePath); err != nil {
+		return fmt.Errorf("failed to process status change: %w", err)
+	}
+
+	// Re-parse to get updated file path after potential move
+	article, err = common.ParseArticle(article.FilePath)
+	if err != nil {
+		// File may have been moved, try original path
+		article, err = common.ParseArticle(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to re-parse article: %w", err)
+		}
+	}
+
+	// Check if article needs approval (publish or update status)
+	currentStatus := article.GetCurrentStatus()
+	if (currentStatus == "publish" || currentStatus == "update") && w.approvalServer != nil {
+		// Check if already pending approval
+		// We don't want to spam approval requests for articles already in the queue
+		log.Printf("📋 Article ready for approval: %s (status: %s, ID: %s)", article.Title, currentStatus, article.ID)
+
+		// Trigger approval
+		if err := w.approvalServer.RequestApproval(article); err != nil {
+			return fmt.Errorf("failed to request approval: %w", err)
+		}
+	}
+
+	return nil
 }

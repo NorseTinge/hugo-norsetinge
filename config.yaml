@@ -1,0 +1,105 @@
+# Norsetinge Configuration Example
+# Copy this file to config.yaml and fill in your values
+
+# Dropbox paths (relative to project root)
+dropbox:
+  base_path: "/home/ubuntu/hugo-norsetinge/Dropbox/Publisering/NorseTinge"
+  folder_language: "da"  # Language for folder names (see folder-aliases.yaml)
+
+  # Auto-generated from folder_language and folder-aliases.yaml:
+  # watch_dir: "udgiv"
+  # published_dir: "udgivet"
+  # rejected_dir: "afvist"
+  # revision_dir: "afventer-rettelser"
+  # draft_dir: "kladde"
+  # templates_dir: "skabeloner"
+
+# OpenRouter API
+openrouter:
+  api_key: ""  # Set in .env as OPENROUTER_API_KEY
+  model: "anthropic/claude-3.5-sonnet"
+  endpoint: "https://openrouter.ai/api/v1"
+
+# Email notifications
+email:
+  smtp_host: "mail.norsetinge.com"
+  smtp_port: 587
+  smtp_user: "publisher@norsetinge.com"
+  smtp_password: ""  # Set in .env as SMTP_PASSWORD
+  from_address: "publisher@norsetinge.com"
+  approval_recipient: "lpmathiasen@icloud.com"
+
+  # IMAP for reading email replies
+  imap_host: "mail.norsetinge.com"
+  imap_port: 993  # SSL/TLS port
+  imap_user: "publisher@norsetinge.com"
+  imap_password: ""  # Set in .env as IMAP_PASSWORD
+
+# Approval server
+approval:
+  host: "0.0.0.0"
+  port: 8080
+  tailscale_hostname: "norsetinge"
+
+# ntfy.sh push notifications
+ntfy:
+  enabled: true
+  server: "https://ntfy.sh"
+  topic: ""  # Set in .env as NTFY_TOPIC
+
+# Hugo (absolute paths)
+hugo:
+  site_dir: "/home/ubuntu/hugo-norsetinge/site"
+  public_dir: "/home/ubuntu/hugo-norsetinge/site/public"
+
+# Image processing
+images:
+  min_width: 1200  # Minimum width for uploaded images
+  min_height: 630  # Minimum height for uploaded images
+  formats: ["webp", "jpeg", "png"]
+  sizes:
+    thumbnail: [300, 300]
+    medium: [800, 600]
+    large: [1920, 1080]
+    og: [1200, 630]  # Open Graph social media
+  quality:
+    webp: 85
+    jpeg: 90
+    png: 95
+
+  # Favicon/icon generation (if favicon/app_icon specified in frontmatter)
+  icons:
+    favicon_sizes: [16, 32, 48]  # Multi-size .ico file
+    apple_touch_icon_sizes: [180, 152, 120, 76]
+    android_icon_sizes: [192, 512]
+
+# Deployment
+deploy:
+  method: "rsync"
+  rsync_target: "user@webhost.com:/var/www/norsetinge.com/public_html/"
+  rsync_opts: "-avz --delete"
+
+# Languages
+languages:
+  - en
+  - da
+  - sv
+  - no
+  - fi
+  - de
+  - fr
+  - it
+  - es
+  - el
+  - kl
+  - is
+  - fo
+  - ru
+  - tr
+  - uk
+  - et
+  - lv
+  - lt
+  - zh
+  - ko
+  - ja

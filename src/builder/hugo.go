@@ -23,13 +23,14 @@ func NewHugoBuilder(cfg *config.Config) *HugoBuilder {
 }
 
 // BuildPreview builds a single-article preview for approval
-// Copies complete Hugo-built site to Dropbox and returns the Dropbox path
+// Returns the URL path relative to /preview/ endpoint (served via Tailscale)
 func (h *HugoBuilder) BuildPreview(article *common.Article) (string, error) {
 	// Detect article language from content or default to Danish
 	lang := h.detectLanguage(article)
 
 	// Create content file in Hugo structure
-	contentPath := filepath.Join(h.cfg.Hugo.SiteDir, "content", fmt.Sprintf("preview-%s.md", article.GetSlug()))
+	slug := article.GetSlug()
+	contentPath := filepath.Join(h.cfg.Hugo.SiteDir, "content", fmt.Sprintf("preview-%s.md", slug))
 
 	// Write article as Hugo content
 	if err := h.writeHugoContent(contentPath, article, lang); err != nil {
@@ -42,19 +43,10 @@ func (h *HugoBuilder) BuildPreview(article *common.Article) (string, error) {
 		return "", fmt.Errorf("failed to build Hugo site: %w", err)
 	}
 
-	// Copy complete preview to Dropbox
-	slug := article.GetSlug()
-	hugoPreviewDir := filepath.Join(h.cfg.Hugo.PublicDir, fmt.Sprintf("preview-%s", slug))
-	dropboxPreviewDir := filepath.Join(h.cfg.Dropbox.BasePath, "godkendelse", slug)
-
-	if err := h.copyPreviewToDropbox(hugoPreviewDir, dropboxPreviewDir); err != nil {
-		return "", fmt.Errorf("failed to copy preview to Dropbox: %w", err)
-	}
-
-	// Return Dropbox path to index.html
-	dropboxHTMLPath := filepath.Join(dropboxPreviewDir, "index.html")
-	log.Printf("Preview copied to Dropbox: %s", dropboxHTMLPath)
-	return dropboxHTMLPath, nil
+	// Return URL path for preview (served via /preview/ endpoint)
+	previewURLPath := fmt.Sprintf("preview-%s/index.html", slug)
+	log.Printf("Preview built and ready at: /preview/%s", previewURLPath)
+	return previewURLPath, nil
 }
 
 // copyPreviewToDropbox copies complete Hugo preview directory to Dropbox
@@ -117,10 +109,12 @@ func (h *HugoBuilder) writeHugoContent(path string, article *common.Article, lan
 title: "%s"
 author: "%s"
 draft: false
+preview: true
+articleID: "%s"
 ---
 
 %s
-`, article.Title, article.Author, article.Content)
+`, article.Title, article.Author, article.ID, article.Content)
 
 	// Ensure directory exists
 	dir := filepath.Dir(path)

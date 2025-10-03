@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 )
 
@@ -13,6 +14,7 @@ type Config struct {
 	OpenRouter OpenRouterConfig `yaml:"openrouter"`
 	Email      EmailConfig      `yaml:"email"`
 	Approval   ApprovalConfig   `yaml:"approval"`
+	Ntfy       NtfyConfig       `yaml:"ntfy"`
 	Hugo       HugoConfig       `yaml:"hugo"`
 	Images     ImagesConfig     `yaml:"images"`
 	Deploy     DeployConfig     `yaml:"deploy"`
@@ -51,6 +53,12 @@ type ApprovalConfig struct {
 	TailscaleHostname string `yaml:"tailscale_hostname"`
 }
 
+type NtfyConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Server  string `yaml:"server"`
+	Topic   string `yaml:"topic"`
+}
+
 type HugoConfig struct {
 	SiteDir   string `yaml:"site_dir"`
 	PublicDir string `yaml:"public_dir"`
@@ -79,6 +87,15 @@ type DeployConfig struct {
 
 // Load reads and parses the configuration file
 func Load(path string) (*Config, error) {
+	// Load .env file from project root
+	envPath := "/home/ubuntu/hugo-norsetinge/.env"
+	if err := godotenv.Load(envPath); err != nil {
+		// .env is optional, don't fail if it doesn't exist
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("error loading .env file: %w", err)
+		}
+	}
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -87,6 +104,20 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	// Override secrets from environment variables
+	if apiKey := os.Getenv("OPENROUTER_API_KEY"); apiKey != "" {
+		cfg.OpenRouter.APIKey = apiKey
+	}
+	if smtpPass := os.Getenv("SMTP_PASSWORD"); smtpPass != "" {
+		cfg.Email.SMTPPassword = smtpPass
+	}
+	if imapPass := os.Getenv("IMAP_PASSWORD"); imapPass != "" {
+		cfg.Email.IMAPPassword = imapPass
+	}
+	if ntfyTopic := os.Getenv("NTFY_TOPIC"); ntfyTopic != "" {
+		cfg.Ntfy.Topic = ntfyTopic
 	}
 
 	// Validate required fields
