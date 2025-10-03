@@ -68,16 +68,15 @@ Dropbox/Publisering/NorseTinge/
 - Git history provides rollback capability
 - Complete backup of live site
 
-## Current Implementation Status
+## Implementation Status
+
+> **Note**: This project follows a KISS (Keep It Simple, Stupid) approach. The original vision (doc/project_plan.md) included automatic translation to 22+ languages, but we've pivoted to complete the full pipeline for one language first. See CHANGELOG.md for the complete rationale.
 
 ### ✅ Phase 1: Core Infrastructure (COMPLETE)
 - Dropbox directory structure ✓
-- Go application with modules:
-  - Config loader (config.yaml) ✓
-  - File watcher (monitors folders) ✓
-  - Markdown parser (frontmatter) ✓
-  - Approval web server (port 8080, Tailscale) ✓
-  - Ntfy push notifications ✓
+- Go application with config loader, file watcher, markdown parser ✓
+- Basic approval web server (port 8080, Tailscale) ✓
+- Ntfy push notifications ✓
 
 ### ✅ Phase 2: Preview & Approval (COMPLETE)
 - Hugo preview builder (single article) ✓
@@ -87,11 +86,11 @@ Dropbox/Publisering/NorseTinge/
 - File movement based on folder location ✓
 
 ### ✅ Phase 3: Publication Pipeline (COMPLETE)
-- [x] Hugo full-site build to `site/public/` ✓
-- [x] Mirror sync: `site/public/` → `site/mirror/` ✓
-- [x] Git automation: commit + push mirror to private repo ✓
-- [x] Rsync deployment: `site/mirror/` → webhost with `--delete` ✓
-- [x] Archive: move article to `udgivet/` after deployment ✓
+- Hugo full-site build to `site/public/` ✓
+- Mirror sync: `site/public/` → `site/mirror/` ✓
+- Git automation: commit + push mirror to private repo ✓
+- Rsync deployment: `site/mirror/` → webhost with `--delete` ✓
+- Archive: move article to `udgivet/` after deployment ✓
 
 ### 📋 Phase 4: Future Enhancements (DEFERRED)
 - Translation pipeline (OpenRouter API, 22 languages)
@@ -99,6 +98,8 @@ Dropbox/Publisering/NorseTinge/
 - Language switcher frontend
 - Image processing automation
 - Internal ad system
+
+**For detailed change history and rationale, see CHANGELOG.md**
 
 ## Configuration Requirements
 
