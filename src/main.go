@@ -59,19 +59,7 @@ func main() {
 
 	log.Println("Watcher started. Monitoring for article changes...")
 
-	// Start IMAP email monitoring in background
-	imapReader := approval.NewIMAPReader(cfg)
-	go func() {
-		log.Println("Starting IMAP email monitoring...")
-		if err := imapReader.StartMonitoring(30*time.Second, func(reply *approval.EmailReply) {
-			log.Printf("📧 Email reply received: Action=%v, Subject=%s", reply.Action, reply.Subject)
-			if err := approvalServer.HandleEmailReply(reply); err != nil {
-				log.Printf("Error processing email reply: %v", err)
-			}
-		}); err != nil {
-			log.Printf("IMAP monitoring failed: %v", err)
-		}
-	}()
+	// Email notifications disabled - using ntfy only
 
 	// Start periodic build+deploy (every 10 minutes)
 	go func() {

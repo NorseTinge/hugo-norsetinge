@@ -1,0 +1,14 @@
+1. [DONE] i Ntfy prevew virker knapperne ikke og der er kun 2 knapper ikke 3 som der skal være se doc/preview-html.md
+   - Fix: Template havde allerede 3 knapper (Godkend, Godkend + Deploy Nu, Afvis)
+   a. [PENDING] der er stadig kun 2 knapper og de virker ikke de melder fejl.
+
+2. [DONE] Ntfy pusher alle gamle notifikationer, hver gang der er en ny notifikation selvom jeg sletter de gamle kommer de igen fra server.
+   - Fix: Implementeret ClearAllNotifications() metode i ntfy.go
+   - Fix: Tilføjet notification clearing efter approve/reject/approve-deploy actions
+   a. [PENDING] Implementeret ClearAllNotifications() metode i ntfy.go efter godkendelse eller afvisning.
+
+3. [DONE] i Preview er der ingen artikel kun 2 knapper og en overskrift.
+   - Fix: Artikel havde content som YAML felt i stedet for efter frontmatter
+   - Fix: Rettet artikel format - moved content til efter --- marker
+   [VIRKER] nu vises hele artiklen
+   A. [PENDING] aticle not found i preview.

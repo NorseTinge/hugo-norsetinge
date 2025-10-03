@@ -21,7 +21,6 @@ import (
 // Server handles approval web requests
 type Server struct {
 	cfg             *config.Config
-	emailSender     *EmailSender
 	ntfySender      *NtfySender
 	hugoBuilder     *builder.HugoBuilder
 	deployer        *deployer.Deployer
@@ -48,7 +47,6 @@ type PendingArticle struct {
 func NewServer(cfg *config.Config) *Server {
 	s := &Server{
 		cfg:             cfg,
-		emailSender:     NewEmailSender(cfg),
 		ntfySender:      NewNtfySender(cfg),
 		hugoBuilder:     builder.NewHugoBuilder(cfg),
 		deployer:        deployer.NewDeployer(cfg),
@@ -109,7 +107,7 @@ func (s *Server) RequestApproval(article *common.Article) error {
 		log.Printf("Warning: Failed to save pending articles: %v", err)
 	}
 
-	// Send ntfy push notification (primary notification method)
+	// Send ntfy push notification
 	if s.cfg.Ntfy.Enabled {
 		if err := s.ntfySender.SendApprovalNotification(
 			article.Title,
@@ -120,20 +118,6 @@ func (s *Server) RequestApproval(article *common.Article) error {
 			log.Printf("Warning: Failed to send ntfy notification: %v", err)
 		}
 	}
-
-	// Email notifications disabled - using ntfy only
-	// Uncomment below to re-enable email notifications:
-	/*
-	if err := s.emailSender.SendApprovalRequestHTML(
-		article.Title,
-		article.Author,
-		htmlPath,
-		approvalURL,
-		id,
-	); err != nil {
-		log.Printf("Warning: Failed to send email: %v", err)
-	}
-	*/
 
 	log.Printf("Approval request sent for: %s (ID: %s, Preview: %s)", article.Title, id, htmlPath)
 	return nil
@@ -195,6 +179,13 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Warning: Failed to remove pending article: %v", err)
 	}
 
+	// Clear ntfy notification for this approval
+	if s.cfg.Ntfy.Enabled {
+		if err := s.ntfySender.ClearAllNotifications(); err != nil {
+			log.Printf("Warning: Failed to clear ntfy notifications: %v", err)
+		}
+	}
+
 	fmt.Fprintf(w, `
 		<!DOCTYPE html>
 		<html><head><meta charset="UTF-8"><title>Godkendt</title></head>
@@ -242,6 +233,13 @@ func (s *Server) handleApproveAndDeploy(w http.ResponseWriter, r *http.Request) 
 	// Remove from pending list
 	if err := s.removePendingArticle(id); err != nil {
 		log.Printf("Warning: Failed to remove pending article: %v", err)
+	}
+
+	// Clear ntfy notification for this approval
+	if s.cfg.Ntfy.Enabled {
+		if err := s.ntfySender.ClearAllNotifications(); err != nil {
+			log.Printf("Warning: Failed to clear ntfy notifications: %v", err)
+		}
 	}
 
 	// 2. Build full Hugo site
@@ -308,6 +306,13 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Warning: Failed to remove pending article: %v", err)
 	}
 
+	// Clear ntfy notification for this rejection
+	if s.cfg.Ntfy.Enabled {
+		if err := s.ntfySender.ClearAllNotifications(); err != nil {
+			log.Printf("Warning: Failed to clear ntfy notifications: %v", err)
+		}
+	}
+
 	fmt.Fprintf(w, `
 		<!DOCTYPE html>
 		<html><head><meta charset="UTF-8"><title>Afvist</title></head>
@@ -316,73 +321,6 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) {
 			<p>Artiklen er flyttet til afvist/ mappen.</p>
 		</body></html>
 	`)
-}
-
-// HandleEmailReply processes an email reply and takes appropriate action
-func (s *Server) HandleEmailReply(reply *EmailReply) error {
-	// Find the pending article by article ID from email header
-	s.mu.RLock()
-	targetArticle, exists := s.pendingArticles[reply.ArticleID]
-	s.mu.RUnlock()
-
-	if !exists || targetArticle == nil {
-		log.Printf("No pending article found for ArticleID: %s (Subject: %s)", reply.ArticleID, reply.Subject)
-		return fmt.Errorf("no matching article found for ID: %s", reply.ArticleID)
-	}
-
-	// Process based on detected action
-	switch reply.Action {
-	case ActionApprove:
-		log.Printf("Email approval received for: %s", targetArticle.Article.Title)
-		targetArticle.Approved = true
-
-		// Update status to published and move to udgivet/
-		targetArticle.Article.UpdateStatus("published")
-		if err := targetArticle.Article.WriteFrontmatter(); err != nil {
-			log.Printf("Error updating article status: %v", err)
-			return fmt.Errorf("failed to update status: %w", err)
-		}
-
-		// Move file to udgivet/
-		if s.mover != nil {
-			if err := s.mover.MoveArticle(targetArticle.Article); err != nil {
-				log.Printf("Error moving article: %v", err)
-				return fmt.Errorf("failed to move article: %w", err)
-			}
-			log.Printf("Article moved to udgivet/: %s", targetArticle.Article.Title)
-		}
-
-		// Remove from pending list
-		if err := s.removePendingArticle(reply.ArticleID); err != nil {
-			log.Printf("Warning: Failed to remove pending article: %v", err)
-		}
-
-		log.Printf("✅ Article approved and published: %s", targetArticle.Article.Title)
-
-	case ActionReject:
-		log.Printf("Email rejection received for: %s", targetArticle.Article.Title)
-		targetArticle.Rejected = true
-		targetArticle.Article.UpdateStatus("rejected")
-		if err := targetArticle.Article.WriteFrontmatter(); err != nil {
-			return fmt.Errorf("failed to update status: %w", err)
-		}
-		if s.mover != nil {
-			if err := s.mover.MoveArticle(targetArticle.Article); err != nil {
-				return fmt.Errorf("failed to move article: %w", err)
-			}
-		}
-
-		// Remove from pending list
-		if err := s.removePendingArticle(reply.ArticleID); err != nil {
-			log.Printf("Warning: Failed to remove pending article: %v", err)
-		}
-
-	default:
-		log.Printf("Unknown action in email reply: %s", reply.Subject)
-		return fmt.Errorf("unknown action: %v", reply.Action)
-	}
-
-	return nil
 }
 
 // generateID generates a random ID
