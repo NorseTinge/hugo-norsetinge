@@ -85,28 +85,39 @@ func (s *Server) Start() error {
 }
 
 // RequestApproval creates approval request and sends notification if not already sent.
+// FIXED: Moved long operations (BuildPreview, SendNotification) outside mutex to prevent deadlock.
 func (s *Server) RequestApproval(article *common.Article) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	id := article.ID
 
-	// Check if a notification has already been sent for this article.
+	// Phase 1: Check if already exists (short lock)
+	s.mu.Lock()
 	if pending, exists := s.pendingArticles[id]; exists && pending.NotificationSent {
+		s.mu.Unlock()
 		log.Printf("⏭️ Skipping notification, already pending for: %s", article.Title)
 		return nil
 	}
 
-	// --- The rest of the operations happen inside the lock to ensure consistency ---
+	// Reserve this ID with placeholder to prevent duplicate processing
+	s.pendingArticles[id] = &PendingArticle{
+		ID:               id,
+		Article:          article,
+		PreviewPath:      "",
+		NotificationSent: false, // Not sent yet
+	}
+	s.mu.Unlock()
 
-	// Build Hugo preview
+	// Phase 2: Build preview (NO LOCK - can take seconds)
 	log.Printf("Building Hugo preview for: %s", article.Title)
 	htmlPath, err := s.hugoBuilder.BuildPreview(article)
 	if err != nil {
+		// Remove placeholder on error
+		s.mu.Lock()
+		delete(s.pendingArticles, id)
+		s.mu.Unlock()
 		return fmt.Errorf("failed to build Hugo preview: %w", err)
 	}
 
-	// Send ntfy push notification
+	// Phase 3: Send notification (NO LOCK - HTTP request)
 	if s.cfg.Ntfy.Enabled {
 		if err := s.ntfySender.SendApprovalNotification(
 			article.Title,
@@ -115,12 +126,16 @@ func (s *Server) RequestApproval(article *common.Article) error {
 			id,
 		); err != nil {
 			log.Printf("Warning: Failed to send ntfy notification: %v", err)
-			// Do not mark as sent if it fails, so it can be retried.
+			// Remove placeholder on error so it can be retried
+			s.mu.Lock()
+			delete(s.pendingArticles, id)
+			s.mu.Unlock()
 			return err
 		}
 	}
 
-	// Store pending article with preview path and mark notification as sent.
+	// Phase 4: Update with final data (short lock)
+	s.mu.Lock()
 	s.pendingArticles[id] = &PendingArticle{
 		ID:               id,
 		Article:          article,
@@ -132,6 +147,7 @@ func (s *Server) RequestApproval(article *common.Article) error {
 	if err := s.savePendingArticles(); err != nil {
 		log.Printf("Warning: Failed to save pending articles: %v", err)
 	}
+	s.mu.Unlock()
 
 	log.Printf("Approval request sent for: %s (ID: %s, Preview: %s)", article.Title, id, htmlPath)
 	return nil
@@ -157,27 +173,21 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request) {
 // handleApprove handles normal approval (no immediate deploy)
 func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[len("/action/approve/"):]
-	log.Printf("🔵 handleApprove called for ID: %s", id)
 
-	log.Printf("🔵 Attempting to lock...")
 	s.mu.Lock()
-	log.Printf("🔵 Lock acquired")
 	pending, exists := s.pendingArticles[id]
 	if !exists {
 		s.mu.Unlock()
-		log.Printf("🔴 Article not found: %s", id)
 		http.Error(w, "Article not found", http.StatusNotFound)
 		return
 	}
 	delete(s.pendingArticles, id)
-	s.mu.Unlock()
-	log.Printf("🔵 Lock released")
 
 	// Persist the change to the pending articles list on disk
-	log.Printf("🔵 Saving pending articles...")
 	if err := s.savePendingArticles(); err != nil {
 		log.Printf("Warning: Failed to save pending articles list: %v", err)
 	}
+	s.mu.Unlock()
 
 	log.Printf("Article approved: %s - moving to udgivet/", pending.Article.Title)
 
