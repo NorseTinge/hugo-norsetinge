@@ -36,3 +36,17 @@
 
 10. [FIXED] Hårdkodede stier i `main.go`.
     - Fix: De hårdkodede stier til `config.yaml` og `folder-aliases.yaml` er blevet erstattet med kommandolinje-flag (`-config` og `-aliases`) for at gøre applikationen mere fleksibel.
+
+11. [FIXED] Mutex deadlock i `approval/server.go:88-135` - RequestApproval() blokerer godkendelse/afvisning.
+    - Problem: RequestApproval() holder global mutex under Hugo build og ntfy notification (kan tage flere sekunder)
+    - Symptom: Klik på "Godkend" knap → hænger for evigt, ingen respons
+    - Root Cause: handleApprove() kan ikke få mutex fordi RequestApproval() holder den
+    - Fix: Opdelt RequestApproval() i 4 faser med korte locks:
+      1. Phase 1: Check exists + reserve ID (short lock)
+      2. Phase 2: Build Hugo preview (NO LOCK - can take seconds)
+      3. Phase 3: Send ntfy notification (NO LOCK - HTTP request)
+      4. Phase 4: Update final data + persist (short lock)
+    - Fejlhåndtering: Placeholder fjernes ved fejl, så retry er muligt
+    - Location: `src/approval/server.go:89-153`
+    - Test: Godkendelse/afvisning virker nu øjeblikkeligt
+    - Note: Quick fix - state machine refactor planlagt i TODO
