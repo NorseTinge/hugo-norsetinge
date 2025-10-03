@@ -157,18 +157,24 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request) {
 // handleApprove handles normal approval (no immediate deploy)
 func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[len("/action/approve/"):]
+	log.Printf("🔵 handleApprove called for ID: %s", id)
 
+	log.Printf("🔵 Attempting to lock...")
 	s.mu.Lock()
+	log.Printf("🔵 Lock acquired")
 	pending, exists := s.pendingArticles[id]
 	if !exists {
 		s.mu.Unlock()
+		log.Printf("🔴 Article not found: %s", id)
 		http.Error(w, "Article not found", http.StatusNotFound)
 		return
 	}
 	delete(s.pendingArticles, id)
 	s.mu.Unlock()
+	log.Printf("🔵 Lock released")
 
 	// Persist the change to the pending articles list on disk
+	log.Printf("🔵 Saving pending articles...")
 	if err := s.savePendingArticles(); err != nil {
 		log.Printf("Warning: Failed to save pending articles list: %v", err)
 	}
