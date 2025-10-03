@@ -2,11 +2,42 @@
 
 - [x] `src/config/config.go:164`: Load folder aliases from `folder-aliases.yaml`.
 - [x] `src/watcher/mover.go:17`: Implement YAML loading from `folder-aliases.yaml`.
-- [ ] `src/builder/hugo.go:152`: Add language detection logic.
+- [x] `src/builder/hugo.go:152`: Add language detection logic. DONE 2025-10-03
 - [ ] `src/common/image-processor.go:24`: Implement image processor.
 - [ ] `src/common/image-processor_test.go:7`: Implement tests for image processor.
-- [ ] `GEMINI.md:24`: Fill in specific build/run commands for the environment.
-- [ ] `GEMINI.md:31`: Verify the path to the Go application.
+- [x] `GEMINI.md:24`: Fill in specific build/run commands for the environment. DONE 2025-10-03
+- [x] `GEMINI.md:31`: Verify the path to the Go application. DONE 2025-10-03
+
+# Critical Bug Fix - Deadlock
+- [ ] `src/approval/server.go:88-135`: Fix mutex deadlock in RequestApproval() - refactor to state machine
+
+# Architecture Refactor - State Machine & ID-based System
+
+## State Machine Implementation
+- [ ] Create `publish-flow.json` as single source of truth for article workflow
+- [ ] Add `ApprovalState` enum with states: IDGenerated, PreviewBuilding, PendingApproval, Approved, DeployedToMirror, DeployedToWebhost, Rejected
+- [ ] Add per-article mutex (`StateMu`) to `PendingArticle` struct for parallel processing
+- [ ] Implement state transitions with disk persistence after each change
+- [ ] Add state history tracking with timestamps in publish-flow.json
+- [ ] Refactor `RequestApproval()` to use state machine (fixes deadlock)
+
+## ID-based Architecture
+- [ ] Implement ID uniqueness validation across all folders and publish-flow.json
+- [ ] Change Hugo output structure to use ID instead of slug:
+  - `content/articles/{ID}.md`
+  - `public/articles/{ID}/index.html`
+  - `mirror/articles/{ID}/index.html`
+- [ ] Update `builder/hugo.go` to use ID-based paths
+- [ ] Add slug-to-ID redirect support in Hugo
+- [ ] Update deployer to sync ID-based structure to webhost
+- [ ] Test crash recovery: verify state rebuild from publish-flow.json
+
+## Benefits
+- Parallel processing: N articles can be in different states simultaneously
+- Crash recovery: Full state restored from publish-flow.json
+- No deadlocks: Per-article locking instead of global mutex
+- Immutable URLs: Article ID never changes, slug can be updated
+- Audit trail: Full state history with timestamps
 
 # Phase 1 - Remaining Tasks
 
