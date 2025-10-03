@@ -6,6 +6,10 @@
 
 *   **Language Detection Implemented** (`src/builder/hugo.go:152-160`): Added `detectLanguage()` function that reads optional `language` field from article frontmatter, defaults to "da" (Danish) if not specified.
 *   **Language Field in Article Struct** (`src/common/frontmatter.go:44-45`): Added `Language string` field to Article struct with YAML tag for optional ISO 639-1 language codes (da, en, de, etc.).
+*   **Three-Button Approval Interface** (`site/layouts/_default/single.html:112-114`): Added third button "⚡ Godkend + Deploy Nu" to preview pages:
+    - ✅ Godkend: Approve for next periodic build (10 min)
+    - ⚡ Godkend + Deploy Nu: Approve and deploy immediately
+    - ❌ Afvis: Reject article
 
 ### 📝 Documentation Updates
 
