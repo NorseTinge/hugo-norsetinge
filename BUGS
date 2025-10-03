@@ -1,14 +1,38 @@
 1. [DONE] i Ntfy prevew virker knapperne ikke og der er kun 2 knapper ikke 3 som der skal være se doc/preview-html.md
    - Fix: Template havde allerede 3 knapper (Godkend, Godkend + Deploy Nu, Afvis)
-   a. [PENDING] der er stadig kun 2 knapper og de virker ikke de melder fejl.
+   a. [FIXED] Ntfy sendte link til /preview/ i stedet for /approve/
+      - Fix: Ændret ntfy.go til at sende approval URL: /approve/{ID}
+      - Nye notifications sendt (12:21:57)
+      - READY FOR TEST: Klik på ny ntfy notification
 
-2. [DONE] Ntfy pusher alle gamle notifikationer, hver gang der er en ny notifikation selvom jeg sletter de gamle kommer de igen fra server.
-   - Fix: Implementeret ClearAllNotifications() metode i ntfy.go
-   - Fix: Tilføjet notification clearing efter approve/reject/approve-deploy actions
-   a. [PENDING] Implementeret ClearAllNotifications() metode i ntfy.go efter godkendelse eller afvisning.
+2. [FIXED] Serveren gensender gamle notifikationer.
+   - Fix: `RequestApproval` tjekker nu, om en notifikation allerede er sendt for en artikel, før den sender en ny. Dette forhindrer, at den periodiske scanner spammer med notifikationer for artikler, der allerede er i godkendelsesflowet.
 
 3. [DONE] i Preview er der ingen artikel kun 2 knapper og en overskrift.
    - Fix: Artikel havde content som YAML felt i stedet for efter frontmatter
    - Fix: Rettet artikel format - moved content til efter --- marker
    [VIRKER] nu vises hele artiklen
-   A. [PENDING] aticle not found i preview.
+
+   a. [FIXED] article not found i preview
+      - Fix 1: Ntfy sender nu til /approve/{ID} (ikke /preview/)
+      - Fix 2: Tilføjet PreviewPath til PendingArticle struct
+      - Fix 3: Template viser Hugo preview i iframe: /preview/{{.PreviewPath}}
+      - READY FOR TEST: Preview skulle nu vise Hugo renderet HTML
+
+4. [FIXED] Race Condition i `approval/server.go`.
+   - Fix: Godkendelses-funktionerne (`handleApprove`, `handleReject` etc.) er gjort atomiske. De låser nu, fjerner artiklen fra 'pending' listen, og låser op med det samme for at forhindre race conditions.
+
+5. [FIXED] Ineffektiv og risikabel `syncToMirror` i `deployer.go`.
+   - Fix: Den manuelle slet-og-kopier logik er erstattet med et `rsync -a --delete` kald, som er hurtigere og mere robust. Dette bringer koden på linje med dokumentationen.
+
+7. [FIXED] Dobbelt håndtering af events i `watcher/watcher.go`.
+   - Fix: `RequestApproval` i `approval/server.go` tjekker allerede om en notifikation er sendt for en artikel (`NotificationSent` flag). Dette forhindrer dobbelt-håndtering fra både fsnotify events og periodicFolderScan.
+
+8. [FIXED] Manglende validering af `status` flags.
+   - Fix: `UpdateStatus` i `common/frontmatter.go` nulstiller nu alle status flags før den nye status sættes, hvilket sikrer at kun ét status-flag er aktivt ad gangen.
+
+9. [FIXED] Gamle preview-filer bliver ikke ryddet op.
+   - Fix: Implementeret `cleanupPreviewFiles` funktion i `approval/server.go` som sletter preview-filer fra `public/`, `mirror/` og `content/` directories når en artikel godkendes eller afvises. Funktionen kaldes i alle tre handlers: handleApprove, handleApproveAndDeploy, og handleReject.
+
+10. [FIXED] Hårdkodede stier i `main.go`.
+    - Fix: De hårdkodede stier til `config.yaml` og `folder-aliases.yaml` er blevet erstattet med kommandolinje-flag (`-config` og `-aliases`) for at gøre applikationen mere fleksibel.

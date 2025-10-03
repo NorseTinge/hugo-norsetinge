@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -19,9 +20,13 @@ func main() {
 	fmt.Println("Norsetinge - Automated Multilingual News Service")
 	fmt.Println("================================================")
 
+	// Define command-line flags for config paths
+	configPath := flag.String("config", "/home/ubuntu/hugo-norsetinge/config.yaml", "Path to the config.yaml file")
+	aliasesPath := flag.String("aliases", "/home/ubuntu/hugo-norsetinge/folder-aliases.yaml", "Path to the folder-aliases.yaml file")
+	flag.Parse()
+
 	// Load config (use absolute path)
-	configPath := "/home/ubuntu/hugo-norsetinge/config.yaml"
-	cfg, err := config.Load(configPath)
+	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
@@ -40,8 +45,7 @@ func main() {
 	}()
 
 	// Create watcher
-	aliasesPath := "/home/ubuntu/hugo-norsetinge/folder-aliases.yaml"
-	w, err := watcher.NewWatcher(cfg, aliasesPath)
+	w, err := watcher.NewWatcher(cfg, *aliasesPath)
 	if err != nil {
 		log.Fatalf("Failed to create watcher: %v", err)
 	}

@@ -113,13 +113,14 @@ func TestUpdateStatus(t *testing.T) {
 		Status: Status{Draft: 1},
 	}
 
-	// Update to publish (preserves history)
+	// Update to publish (clears all other flags - Bug 8 fix)
 	if err := article.UpdateStatus("publish"); err != nil {
 		t.Fatalf("UpdateStatus failed: %v", err)
 	}
 
-	if article.Status.Draft != 1 {
-		t.Error("Draft status should be preserved")
+	// Bug 8 fix: Only one status should be active at a time
+	if article.Status.Draft != 0 {
+		t.Error("Draft status should be cleared when setting new status")
 	}
 
 	if article.Status.Publish != 1 {
@@ -128,5 +129,60 @@ func TestUpdateStatus(t *testing.T) {
 
 	if article.GetCurrentStatus() != "publish" {
 		t.Errorf("Current status should be 'publish', got '%s'", article.GetCurrentStatus())
+	}
+}
+
+// TestUpdateStatusClearsOtherFlags tests that UpdateStatus ensures only one flag is active (Bug 8 fix)
+func TestUpdateStatusClearsOtherFlags(t *testing.T) {
+	tests := []struct {
+		name        string
+		startStatus Status
+		newStatus   string
+		wantStatus  Status
+	}{
+		{
+			name:        "draft to publish clears draft",
+			startStatus: Status{Draft: 1},
+			newStatus:   "publish",
+			wantStatus:  Status{Publish: 1},
+		},
+		{
+			name:        "multiple flags to rejected clears all",
+			startStatus: Status{Draft: 1, Revision: 1, Publish: 1},
+			newStatus:   "rejected",
+			wantStatus:  Status{Rejected: 1},
+		},
+		{
+			name:        "published to update clears published",
+			startStatus: Status{Published: 1},
+			newStatus:   "update",
+			wantStatus:  Status{Update: 1},
+		},
+		{
+			name:        "all flags set to draft clears all",
+			startStatus: Status{Draft: 1, Revision: 1, Publish: 1, Published: 1, Rejected: 1, Update: 1},
+			newStatus:   "draft",
+			wantStatus:  Status{Draft: 1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			article := &Article{Status: tt.startStatus}
+
+			if err := article.UpdateStatus(tt.newStatus); err != nil {
+				t.Fatalf("UpdateStatus failed: %v", err)
+			}
+
+			// Verify only the expected flag is set
+			if article.Status != tt.wantStatus {
+				t.Errorf("Expected status %+v, got %+v", tt.wantStatus, article.Status)
+			}
+
+			// Verify GetCurrentStatus returns expected value
+			if article.GetCurrentStatus() != tt.newStatus {
+				t.Errorf("Expected current status '%s', got '%s'", tt.newStatus, article.GetCurrentStatus())
+			}
+		})
 	}
 }

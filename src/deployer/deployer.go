@@ -2,7 +2,6 @@ package deployer
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -49,31 +48,32 @@ func (d *Deployer) Deploy(publicDir, mirrorDir string) error {
 	return nil
 }
 
-// syncToMirror copies public directory to mirror
+// syncToMirror copies public directory to mirror using rsync for efficiency.
 func (d *Deployer) syncToMirror(publicDir, mirrorDir string) error {
 	log.Printf("📋 Syncing public → mirror...")
 
-	// Remove existing mirror content (but keep .git)
-	entries, err := os.ReadDir(mirrorDir)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to read mirror directory: %w", err)
+	// Ensure the mirror directory exists
+	if err := os.MkdirAll(mirrorDir, 0755); err != nil {
+		return fmt.Errorf("failed to create mirror directory: %w", err)
 	}
 
-	for _, entry := range entries {
-		// Keep .git directory
-		if entry.Name() == ".git" {
-			continue
-		}
-
-		path := filepath.Join(mirrorDir, entry.Name())
-		if err := os.RemoveAll(path); err != nil {
-			return fmt.Errorf("failed to remove %s: %w", path, err)
-		}
+	// Use rsync to efficiently sync the directories
+	// -a: archive mode (preserves permissions, etc.)
+	// --delete: removes files from mirror that are not in public
+	// --exclude: keeps the .git directory in the mirror
+	args := []string{
+		"-a",
+		"--delete",
+		"--exclude", ".git",
+		publicDir + "/", // Trailing slash is important!
+		mirrorDir + "/",
 	}
 
-	// Copy all files from public to mirror
-	if err := copyDir(publicDir, mirrorDir); err != nil {
-		return fmt.Errorf("failed to copy files: %w", err)
+	cmd := exec.Command("rsync", args...)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return fmt.Errorf("rsync to mirror failed: %w\nOutput: %s", err, string(output))
 	}
 
 	log.Printf("✓ Synced to mirror: %s", mirrorDir)
@@ -186,61 +186,4 @@ func (d *Deployer) rsyncToWebhost(mirrorDir string) error {
 	return nil
 }
 
-// copyDir recursively copies a directory
-func copyDir(src, dst string) error {
-	// Create destination directory
-	if err := os.MkdirAll(dst, 0755); err != nil {
-		return err
-	}
 
-	// Read source directory
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		srcPath := filepath.Join(src, entry.Name())
-		dstPath := filepath.Join(dst, entry.Name())
-
-		if entry.IsDir() {
-			// Recursively copy directory
-			if err := copyDir(srcPath, dstPath); err != nil {
-				return err
-			}
-		} else {
-			// Copy file
-			if err := copyFile(srcPath, dstPath); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-// copyFile copies a single file
-func copyFile(src, dst string) error {
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		return err
-	}
-
-	// Copy permissions
-	srcInfo, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-	return os.Chmod(dst, srcInfo.Mode())
-}

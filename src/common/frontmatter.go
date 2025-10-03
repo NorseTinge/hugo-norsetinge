@@ -134,8 +134,17 @@ func (a *Article) GetSlug() string {
 	return slug
 }
 
-// UpdateStatus sets a new status and preserves history
+// UpdateStatus sets a new status and clears all other status flags
 func (a *Article) UpdateStatus(newStatus string) error {
+	// Reset all status flags first
+	a.Status.Draft = 0
+	a.Status.Revision = 0
+	a.Status.Publish = 0
+	a.Status.Published = 0
+	a.Status.Rejected = 0
+	a.Status.Update = 0
+
+	// Set the new status
 	switch newStatus {
 	case "draft":
 		a.Status.Draft = 1

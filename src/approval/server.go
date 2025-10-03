@@ -36,11 +36,13 @@ type FileMover interface {
 
 // PendingArticle represents an article awaiting approval
 type PendingArticle struct {
-	ID       string
-	Article  *common.Article
-	Approved bool
-	Rejected bool
-	Comments string
+	ID               string
+	Article          *common.Article
+	PreviewPath      string // Hugo preview HTML path (for iframe)
+	Approved         bool
+	Rejected         bool
+	Comments         string
+	NotificationSent bool   // To prevent re-sending notifications
 }
 
 // NewServer creates a new approval server
@@ -82,29 +84,26 @@ func (s *Server) Start() error {
 	return http.ListenAndServe(addr, nil)
 }
 
-// RequestApproval creates approval request and sends email
+// RequestApproval creates approval request and sends notification if not already sent.
 func (s *Server) RequestApproval(article *common.Article) error {
-	// Use article's unique ID (generated when first parsed)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	id := article.ID
+
+	// Check if a notification has already been sent for this article.
+	if pending, exists := s.pendingArticles[id]; exists && pending.NotificationSent {
+		log.Printf("⏭️ Skipping notification, already pending for: %s", article.Title)
+		return nil
+	}
+
+	// --- The rest of the operations happen inside the lock to ensure consistency ---
 
 	// Build Hugo preview
 	log.Printf("Building Hugo preview for: %s", article.Title)
 	htmlPath, err := s.hugoBuilder.BuildPreview(article)
 	if err != nil {
 		return fmt.Errorf("failed to build Hugo preview: %w", err)
-	}
-
-	// Store pending article with preview path
-	s.mu.Lock()
-	s.pendingArticles[id] = &PendingArticle{
-		ID:      id,
-		Article: article,
-	}
-	s.mu.Unlock()
-
-	// Persist to disk
-	if err := s.savePendingArticles(); err != nil {
-		log.Printf("Warning: Failed to save pending articles: %v", err)
 	}
 
 	// Send ntfy push notification
@@ -116,7 +115,22 @@ func (s *Server) RequestApproval(article *common.Article) error {
 			id,
 		); err != nil {
 			log.Printf("Warning: Failed to send ntfy notification: %v", err)
+			// Do not mark as sent if it fails, so it can be retried.
+			return err
 		}
+	}
+
+	// Store pending article with preview path and mark notification as sent.
+	s.pendingArticles[id] = &PendingArticle{
+		ID:               id,
+		Article:          article,
+		PreviewPath:      htmlPath,
+		NotificationSent: true, // Mark as sent
+	}
+
+	// Persist to disk
+	if err := s.savePendingArticles(); err != nil {
+		log.Printf("Warning: Failed to save pending articles: %v", err)
 	}
 
 	log.Printf("Approval request sent for: %s (ID: %s, Preview: %s)", article.Title, id, htmlPath)
@@ -146,14 +160,17 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 
 	s.mu.Lock()
 	pending, exists := s.pendingArticles[id]
-	if exists {
-		pending.Approved = true
-	}
-	s.mu.Unlock()
-
 	if !exists {
+		s.mu.Unlock()
 		http.Error(w, "Article not found", http.StatusNotFound)
 		return
+	}
+	delete(s.pendingArticles, id)
+	s.mu.Unlock()
+
+	// Persist the change to the pending articles list on disk
+	if err := s.savePendingArticles(); err != nil {
+		log.Printf("Warning: Failed to save pending articles list: %v", err)
 	}
 
 	log.Printf("Article approved: %s - moving to udgivet/", pending.Article.Title)
@@ -174,10 +191,8 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Remove from pending list
-	if err := s.removePendingArticle(id); err != nil {
-		log.Printf("Warning: Failed to remove pending article: %v", err)
-	}
+	// Clean up preview files
+	s.cleanupPreviewFiles(pending.Article)
 
 	// Clear ntfy notification for this approval
 	if s.cfg.Ntfy.Enabled {
@@ -202,14 +217,17 @@ func (s *Server) handleApproveAndDeploy(w http.ResponseWriter, r *http.Request) 
 
 	s.mu.Lock()
 	pending, exists := s.pendingArticles[id]
-	if exists {
-		pending.Approved = true
-	}
-	s.mu.Unlock()
-
 	if !exists {
+		s.mu.Unlock()
 		http.Error(w, "Article not found", http.StatusNotFound)
 		return
+	}
+	delete(s.pendingArticles, id)
+	s.mu.Unlock()
+
+	// Persist the change to the pending articles list on disk
+	if err := s.savePendingArticles(); err != nil {
+		log.Printf("Warning: Failed to save pending articles list: %v", err)
 	}
 
 	log.Printf("Article approved with immediate deploy: %s", pending.Article.Title)
@@ -230,10 +248,8 @@ func (s *Server) handleApproveAndDeploy(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Remove from pending list
-	if err := s.removePendingArticle(id); err != nil {
-		log.Printf("Warning: Failed to remove pending article: %v", err)
-	}
+	// Clean up preview files
+	s.cleanupPreviewFiles(pending.Article)
 
 	// Clear ntfy notification for this approval
 	if s.cfg.Ntfy.Enabled {
@@ -274,14 +290,17 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) {
 
 	s.mu.Lock()
 	pending, exists := s.pendingArticles[id]
-	if exists {
-		pending.Rejected = true
-	}
-	s.mu.Unlock()
-
 	if !exists {
+		s.mu.Unlock()
 		http.Error(w, "Article not found", http.StatusNotFound)
 		return
+	}
+	delete(s.pendingArticles, id)
+	s.mu.Unlock()
+
+	// Persist the change to the pending articles list on disk
+	if err := s.savePendingArticles(); err != nil {
+		log.Printf("Warning: Failed to save pending articles list: %v", err)
 	}
 
 	// Update article status to rejected and move file
@@ -301,10 +320,8 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Article rejected: %s", pending.Article.Title)
 
-	// Remove from pending list
-	if err := s.removePendingArticle(id); err != nil {
-		log.Printf("Warning: Failed to remove pending article: %v", err)
-	}
+	// Clean up preview files
+	s.cleanupPreviewFiles(pending.Article)
 
 	// Clear ntfy notification for this rejection
 	if s.cfg.Ntfy.Enabled {
@@ -356,6 +373,34 @@ func (s *Server) savePendingArticles() error {
 	return nil
 }
 
+// cleanupPreviewFiles removes preview files from public and mirror directories
+func (s *Server) cleanupPreviewFiles(article *common.Article) {
+	slug := article.GetSlug()
+	previewDirName := fmt.Sprintf("preview-%s", slug)
+
+	// Clean up from public directory
+	publicPreviewPath := filepath.Join(s.cfg.Hugo.PublicDir, previewDirName)
+	if err := os.RemoveAll(publicPreviewPath); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: Failed to remove preview from public: %v", err)
+	} else if err == nil {
+		log.Printf("🧹 Cleaned up preview from public/: %s", previewDirName)
+	}
+
+	// Clean up from mirror directory
+	mirrorPreviewPath := filepath.Join(s.cfg.Hugo.MirrorDir, previewDirName)
+	if err := os.RemoveAll(mirrorPreviewPath); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: Failed to remove preview from mirror: %v", err)
+	} else if err == nil {
+		log.Printf("🧹 Cleaned up preview from mirror/: %s", previewDirName)
+	}
+
+	// Also clean up the temporary content file if it still exists
+	contentPath := filepath.Join(s.cfg.Hugo.SiteDir, "content", fmt.Sprintf("preview-%s.md", slug))
+	if err := os.Remove(contentPath); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: Failed to remove preview content: %v", err)
+	}
+}
+
 // loadPendingArticles loads pending articles from disk
 func (s *Server) loadPendingArticles() error {
 	path := s.getPendingArticlesPath()
@@ -380,14 +425,6 @@ func (s *Server) loadPendingArticles() error {
 	return nil
 }
 
-// removePendingArticle removes and persists the change
-func (s *Server) removePendingArticle(id string) error {
-	s.mu.Lock()
-	delete(s.pendingArticles, id)
-	s.mu.Unlock()
-
-	return s.savePendingArticles()
-}
 
 const approvalTemplate = `
 <!DOCTYPE html>
@@ -455,8 +492,8 @@ const approvalTemplate = `
     </div>
 
     <div class="article-preview">
-        <h2>Preview</h2>
-        <pre>{{.Article.Content}}</pre>
+        <h2>Artikel Preview</h2>
+        <iframe src="/preview/{{.PreviewPath}}" style="width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 4px;"></iframe>
     </div>
 
     <div class="actions">
