@@ -7,3 +7,26 @@
 - [ ] `src/common/image-processor_test.go:7`: Implement tests for image processor.
 - [ ] `GEMINI.md:24`: Fill in specific build/run commands for the environment.
 - [ ] `GEMINI.md:31`: Verify the path to the Go application.
+
+# Phase 1 - Remaining Tasks
+
+## Fix Current Article Format
+- [ ] Ret "DevOps som paradigme.md" til korrekt format
+- [ ] Test preview viser content korrekt
+- [ ] Test godkendelse workflow
+
+## Complete Pipeline Test
+- [ ] Test 4-5 artikler gennem hele pipeline
+- [ ] Verify periodic build (10 min)
+- [ ] Verify manual deploy
+- [ ] Check mirror sync
+
+## Enable Production Features
+- [ ] Enable git auto_commit
+- [ ] Enable rsync deployment
+- [ ] Test complete deploy to webhost
+
+## Documentation
+- [ ] User guide (dansk)
+- [ ] Troubleshooting guide
+- [ ] API documentation
