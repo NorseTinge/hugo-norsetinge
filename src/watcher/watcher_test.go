@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"norsetinge/config"
+	"norsetinge/src/config"
 )
 
 func TestWatcher(t *testing.T) {

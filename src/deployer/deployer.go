@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"norsetinge/config"
+	"norsetinge/src/config"
 )
 
 // Deployer handles deployment pipeline

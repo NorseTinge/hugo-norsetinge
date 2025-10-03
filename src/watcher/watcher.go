@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"norsetinge/common"
-	"norsetinge/config"
+	"norsetinge/src/common"
+	"norsetinge/src/config"
 )
 
 // Watcher monitors Dropbox folders for file changes

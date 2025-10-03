@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"norsetinge/config"
+	"norsetinge/src/config"
 )
 
 // NtfySender sends push notifications via ntfy.sh

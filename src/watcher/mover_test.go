@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"norsetinge/common"
-	"norsetinge/config"
+	"norsetinge/src/common"
+	"norsetinge/src/config"
 )
 
 func TestMoveArticle(t *testing.T) {

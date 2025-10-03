@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"norsetinge/approval"
-	"norsetinge/common"
-	"norsetinge/config"
+	"norsetinge/src/approval"
+	"norsetinge/src/common"
+	"norsetinge/src/config"
 	"os"
 	"path/filepath"
 )

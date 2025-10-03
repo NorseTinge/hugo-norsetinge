@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"norsetinge/common"
-	"norsetinge/config"
+	"norsetinge/src/common"
+	"norsetinge/src/config"
 )
 
 

@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"norsetinge/builder"
-	"norsetinge/common"
-	"norsetinge/config"
-	"norsetinge/deployer"
+	"norsetinge/src/builder"
+	"norsetinge/src/common"
+	"norsetinge/src/config"
+	"norsetinge/src/deployer"
 )
 
 // Server handles approval web requests

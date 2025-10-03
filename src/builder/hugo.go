@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"norsetinge/common"
-	"norsetinge/config"
+	"norsetinge/src/common"
+	"norsetinge/src/config"
 )
 
 // HugoBuilder handles Hugo site building

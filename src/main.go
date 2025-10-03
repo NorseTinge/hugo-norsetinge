@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"norsetinge/approval"
-	"norsetinge/builder"
-	"norsetinge/config"
-	"norsetinge/deployer"
-	"norsetinge/watcher"
+	"norsetinge/src/approval"
+	"norsetinge/src/builder"
+	"norsetinge/src/config"
+	"norsetinge/src/deployer"
+	"norsetinge/src/watcher"
 )
 
 func main() {
