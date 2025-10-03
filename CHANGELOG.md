@@ -1,5 +1,39 @@
 # Changelog
 
+## 2025-10-03 (Late Evening) - Architecture Decision: State Machine & ID-based System
+
+### 🏗️ Major Architecture Change (Planned)
+
+**Problem Discovered**: Mutex deadlock in `src/approval/server.go:88-135` - `RequestApproval()` holds global lock during Hugo build and ntfy notification, blocking all approval/rejection actions.
+
+**Root Cause**: Synchronous, single-threaded approval workflow cannot handle multiple articles in parallel.
+
+**New Architecture Decision**: State Machine with ID-based routing
+
+#### State Machine Design
+- **Single Source of Truth**: `publish-flow.json` replaces `.pending_approvals.json`
+- **Per-Article State**: Each article has its own state + mutex, enabling parallel processing
+- **States**: IDGenerated → PreviewBuilding → PendingApproval → Approved → DeployedToMirror → DeployedToWebhost
+- **State History**: Timestamp tracking for audit trail and debugging
+- **Crash Recovery**: Full workflow state restored from publish-flow.json on restart
+
+#### ID-based URL Structure
+- **Current**: `norsetinge.com/devops-som-paradigme/` (slug can change)
+- **New**: `norsetinge.com/articles/ABC123/` (permanent, immutable)
+- **Hugo paths**: `content/articles/{ID}.md` → `public/articles/{ID}/index.html` → `mirror/articles/{ID}/index.html`
+- **Slug redirects**: Optional slug-to-ID redirects for SEO (e.g., `/devops-paradigme/` → `/articles/ABC123/`)
+
+#### Benefits
+1. **Scalability**: N articles processed in parallel (currently limited to 1)
+2. **Resilience**: Crash recovery from persistent state file
+3. **No Deadlocks**: Per-article locking instead of global mutex
+4. **Immutable URLs**: Article ID never changes, content/slug can be updated
+5. **Audit Trail**: Full state history with timestamps for debugging
+
+**Status**: Documented in TODO, implementation scheduled for next phase.
+
+---
+
 ## 2025-10-03 (Evening) - Language Detection & Testing
 
 ### ✨ Features
