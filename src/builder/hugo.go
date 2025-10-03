@@ -148,11 +148,14 @@ func (h *HugoBuilder) buildSite() error {
 	return nil
 }
 
-// detectLanguage detects article language (for now, assumes Danish)
-// TODO: Add language detection logic
+// detectLanguage detects article language from frontmatter or defaults to Danish
 func (h *HugoBuilder) detectLanguage(article *common.Article) string {
-	// For now, default to Danish
-	// Later: detect from content or add language field to frontmatter
+	// Check if language is specified in frontmatter
+	if article.Language != "" {
+		return article.Language
+	}
+
+	// Default to Danish (original language)
 	return "da"
 }
 

@@ -41,6 +41,9 @@ type Article struct {
 	Favicon string `yaml:"favicon,omitempty"`
 	AppIcon string `yaml:"app_icon,omitempty"`
 
+	// Optional language field (ISO 639-1 code, e.g., "da", "en", "de")
+	Language string `yaml:"language,omitempty"`
+
 	// Raw content (after frontmatter)
 	Content string
 }
