@@ -1,7 +1,7 @@
 # TODO
 
-- [ ] `src/config/config.go:164`: Load folder aliases from `folder-aliases.yaml`.
-- [ ] `src/watcher/mover.go:17`: Implement YAML loading from `folder-aliases.yaml`.
+- [x] `src/config/config.go:164`: Load folder aliases from `folder-aliases.yaml`.
+- [x] `src/watcher/mover.go:17`: Implement YAML loading from `folder-aliases.yaml`.
 - [ ] `src/builder/hugo.go:152`: Add language detection logic.
 - [ ] `src/common/image-processor.go:24`: Implement image processor.
 - [ ] `src/common/image-processor_test.go:7`: Implement tests for image processor.
