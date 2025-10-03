@@ -29,3 +29,6 @@ site/resources/
 
 # Pending approvals state
 .pending_approvals.json
+
+# Site mirror
+mirror/
