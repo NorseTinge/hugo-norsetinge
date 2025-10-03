@@ -143,8 +143,8 @@ func (s *Server) RequestApproval(article *common.Article) error {
 		NotificationSent: true, // Mark as sent
 	}
 
-	// Persist to disk
-	if err := s.savePendingArticles(); err != nil {
+	// Persist to disk (we already hold lock, use NoLock version)
+	if err := s.savePendingArticlesNoLock(); err != nil {
 		log.Printf("Warning: Failed to save pending articles: %v", err)
 	}
 	s.mu.Unlock()
@@ -370,11 +370,15 @@ func (s *Server) getPendingArticlesPath() string {
 	return filepath.Join(s.cfg.Dropbox.BasePath, ".pending_approvals.json")
 }
 
-// savePendingArticles persists pending articles to disk
+// savePendingArticles persists pending articles to disk (with locking)
 func (s *Server) savePendingArticles() error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	return s.savePendingArticlesNoLock()
+}
 
+// savePendingArticlesNoLock persists pending articles to disk (assumes caller holds lock)
+func (s *Server) savePendingArticlesNoLock() error {
 	data, err := json.MarshalIndent(s.pendingArticles, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal pending articles: %w", err)
