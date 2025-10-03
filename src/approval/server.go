@@ -36,13 +36,13 @@ type FileMover interface {
 
 // PendingArticle represents an article awaiting approval
 type PendingArticle struct {
-	ID               string
-	Article          *common.Article
-	PreviewPath      string // Hugo preview HTML path (for iframe)
-	Approved         bool
-	Rejected         bool
-	Comments         string
-	NotificationSent bool   // To prevent re-sending notifications
+	ID               string              `json:"id"`
+	Article          *common.Article     `json:"article"`
+	PreviewPath      string              `json:"preview_path"` // Hugo preview HTML path (for iframe)
+	Approved         bool                `json:"approved"`
+	Rejected         bool                `json:"rejected"`
+	Comments         string              `json:"comments"`
+	NotificationSent bool                `json:"notification_sent"` // To prevent re-sending notifications
 }
 
 // NewServer creates a new approval server
