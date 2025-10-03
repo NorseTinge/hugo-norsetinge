@@ -1,5 +1,52 @@
 # Changelog
 
+## 2025-10-03 (Evening) - Language Detection & Testing
+
+### ✨ Features
+
+*   **Language Detection Implemented** (`src/builder/hugo.go:152-160`): Added `detectLanguage()` function that reads optional `language` field from article frontmatter, defaults to "da" (Danish) if not specified.
+*   **Language Field in Article Struct** (`src/common/frontmatter.go:44-45`): Added `Language string` field to Article struct with YAML tag for optional ISO 639-1 language codes (da, en, de, etc.).
+
+### 📝 Documentation Updates
+
+*   **GEMINI.md Build Instructions** (`GEMINI.md:20-41`): Updated with correct build/run commands for norsetinge application:
+    ```bash
+    go build -o norsetinge ./src/main.go
+    ./norsetinge
+    ```
+
+### 🐛 Bug Fixes
+
+*   **Article Format Corrections**:
+    *   Fixed `DevOps som paradigme.md` in `opdater/` folder - removed conflicting `publish: 1` flag
+    *   Fixed `ai_devops_paradigme.md` in `udgiv/` folder - removed duplicate content in frontmatter YAML section
+
+### ✅ Testing & Verification
+
+*   **Preview System Tested**:
+    *   Norsetinge application running successfully (PID 166392)
+    *   Hugo preview builds correctly to `site/public/preview-*/`
+    *   Preview accessible via http://localhost:8080/preview/
+    *   Tailscale serve HTTPS verified: https://norsetinge.tail2d448.ts.net/preview/
+    *   Ntfy notifications sent successfully
+    *   Approval workflow ready for testing
+
+### 📋 TODO Progress
+
+*   ✅ Language detection logic (src/builder/hugo.go:152)
+*   ✅ GEMINI.md build commands (GEMINI.md:24)
+*   ✅ Go application path verification (GEMINI.md:31)
+*   ✅ DevOps article format correction
+*   ✅ Preview content verification
+
+**Next Steps**:
+*   Test godkendelse (approval) workflow
+*   Test 4-5 artikler gennem hele pipeline
+*   Enable git auto_commit
+*   Enable rsync deployment
+
+---
+
 ## 2025-10-03 (Afternoon) - Bug Fixes & Test Coverage
 
 ### 🐛 Bug Fixes
