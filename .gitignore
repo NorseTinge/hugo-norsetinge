@@ -32,3 +32,13 @@ site/resources/
 
 # Site mirror
 mirror/
+
+# Dropbox
+.dropbox
+.dropboxignore
+.dropboxstate
+Dropbox/
+
+# Docker
+.dockerignore
+.dockerfile
