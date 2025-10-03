@@ -26,7 +26,7 @@ func main() {
 	flag.Parse()
 
 	// Load config (use absolute path)
-	cfg, err := config.Load(*configPath)
+	cfg, err := config.Load(*configPath, *aliasesPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
@@ -45,7 +45,7 @@ func main() {
 	}()
 
 	// Create watcher
-	w, err := watcher.NewWatcher(cfg, *aliasesPath)
+	w, err := watcher.NewWatcher(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create watcher: %v", err)
 	}

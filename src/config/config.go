@@ -9,18 +9,22 @@ import (
 )
 
 // Config represents the application configuration
+type FolderAliases map[string]map[string]string
+
+// Config represents the application configuration
 type Config struct {
-	Dropbox    DropboxConfig    `yaml:"dropbox"`
-	OpenRouter OpenRouterConfig `yaml:"openrouter"`
-	Email      EmailConfig      `yaml:"email"`
-	Approval   ApprovalConfig   `yaml:"approval"`
-	Ntfy       NtfyConfig       `yaml:"ntfy"`
-	Hugo       HugoConfig       `yaml:"hugo"`
-	Git        GitConfig        `yaml:"git"`
-	Rsync      RsyncConfig      `yaml:"rsync"`
-	Images     ImagesConfig     `yaml:"images"`
-	Deploy     DeployConfig     `yaml:"deploy"`
-	Languages  []string         `yaml:"languages"`
+	Dropbox       DropboxConfig    `yaml:"dropbox"`
+	OpenRouter    OpenRouterConfig `yaml:"openrouter"`
+	Email         EmailConfig      `yaml:"email"`
+	Approval      ApprovalConfig   `yaml:"approval"`
+	Ntfy          NtfyConfig       `yaml:"ntfy"`
+	Hugo          HugoConfig       `yaml:"hugo"`
+	Git           GitConfig        `yaml:"git"`
+	Rsync         RsyncConfig      `yaml:"rsync"`
+	Images        ImagesConfig     `yaml:"images"`
+	Deploy        DeployConfig     `yaml:"deploy"`
+	Languages     []string         `yaml:"languages"`
+	FolderAliases `yaml:"-"` // Loaded separately, suppress from main config YAML
 }
 
 type DropboxConfig struct {
@@ -102,7 +106,7 @@ type RsyncConfig struct {
 }
 
 // Load reads and parses the configuration file
-func Load(path string) (*Config, error) {
+func Load(path string, aliasesPath string) (*Config, error) {
 	// Load .env file from project root
 	envPath := "/home/ubuntu/hugo-norsetinge/.env"
 	if err := godotenv.Load(envPath); err != nil {
@@ -120,6 +124,16 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	// Load folder aliases
+	aliasesData, err := os.ReadFile(aliasesPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read folder aliases file: %w", err)
+	}
+
+	if err := yaml.Unmarshal(aliasesData, &cfg.FolderAliases); err != nil {
+		return nil, fmt.Errorf("failed to parse folder aliases: %w", err)
 	}
 
 	// Override secrets from environment variables
@@ -159,9 +173,4 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// GetFolderPath returns the full path to a specific folder based on folder_language
-func (c *Config) GetFolderPath(folderType string) (string, error) {
-	// TODO: Load folder aliases from folder-aliases.yaml
-	// For now, return a placeholder
-	return fmt.Sprintf("%s/%s", c.Dropbox.BasePath, folderType), nil
-}
+

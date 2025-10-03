@@ -9,32 +9,7 @@ import (
 	"norsetinge/config"
 )
 
-// FolderAliases maps status types to folder names based on language
-type FolderAliases map[string]map[string]string
 
-// LoadFolderAliases loads the folder-aliases.yaml file
-func LoadFolderAliases(path string) (FolderAliases, error) {
-	// TODO: Implement YAML loading from folder-aliases.yaml
-	// For now, return hardcoded Danish aliases
-	return FolderAliases{
-		"da": {
-			"draft":     "kladde",
-			"revision":  "afventer-rettelser",
-			"publish":   "udgiv",
-			"published": "udgivet",
-			"rejected":  "afvist",
-			"update":    "opdater",
-		},
-		"en": {
-			"draft":     "drafts",
-			"revision":  "awaiting-revision",
-			"publish":   "publish",
-			"published": "published",
-			"rejected":  "rejected",
-			"update":    "update",
-		},
-	}, nil
-}
 
 // Mover handles moving files between folders based on status
 type Mover struct {
@@ -43,15 +18,10 @@ type Mover struct {
 }
 
 // NewMover creates a new file mover
-func NewMover(cfg *config.Config, aliasesPath string) (*Mover, error) {
-	aliases, err := LoadFolderAliases(aliasesPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load folder aliases: %w", err)
-	}
-
+func NewMover(cfg *config.Config) (*Mover, error) {
 	return &Mover{
 		cfg:     cfg,
-		aliases: aliases,
+		aliases: cfg.FolderAliases,
 	}, nil
 }
 
