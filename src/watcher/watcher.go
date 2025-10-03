@@ -42,8 +42,8 @@ const (
 )
 
 // NewWatcher creates a new file watcher
-func NewWatcher(cfg *config.Config, aliasesPath string) (*Watcher, error) {
-	mover, err := NewMover(cfg, aliasesPath)
+func NewWatcher(cfg *config.Config) (*Watcher, error) {
+	mover, err := NewMover(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create mover: %w", err)
 	}
