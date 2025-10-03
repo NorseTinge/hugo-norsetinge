@@ -79,6 +79,10 @@
             background: #28a745;
             color: white;
         }
+        .btn-approve-deploy {
+            background: #ff9800;
+            color: white;
+        }
         .btn-reject {
             background: #dc3545;
             color: white;
@@ -105,7 +109,8 @@
 <body>
     {{ if .Params.preview }}
     <div class="approval-bar">
-        <button class="btn btn-approve" onclick="handleApproval('approve')">✅ Godkend og publicer</button>
+        <button class="btn btn-approve" onclick="handleApproval('approve')">✅ Godkend</button>
+        <button class="btn btn-approve-deploy" onclick="handleApproval('approve-deploy')">⚡ Godkend + Deploy Nu</button>
         <button class="btn btn-reject" onclick="handleApproval('reject')">❌ Afvis</button>
     </div>
     <div id="status-message"></div>
@@ -131,7 +136,26 @@
     <script>
         function handleApproval(action) {
             const articleID = "{{ .Params.articleID }}";
-            const endpoint = action === 'approve' ? '/action/approve/' : '/action/reject/';
+            let endpoint;
+            let successMessage;
+
+            if (action === 'approve') {
+                endpoint = '/action/approve/';
+                successMessage = '✅ Artikel godkendt! Den vil blive deployeret ved næste automatiske build (hver 10 min).';
+            } else if (action === 'approve-deploy') {
+                if (!confirm('Deploy øjeblikkeligt?\n\nArtiklen vil blive bygget og deployeret med det samme.')) {
+                    return;
+                }
+                endpoint = '/action/approve-deploy/';
+                successMessage = '⚡ Artikel godkendt og deployment startet!';
+            } else {
+                if (!confirm('Afvis artikel?\n\nDu kan rette den i afvist/ mappen.')) {
+                    return;
+                }
+                endpoint = '/action/reject/';
+                successMessage = '❌ Artikel afvist. Den er flyttet til afvist/ mappen.';
+            }
+
             const statusMsg = document.getElementById('status-message');
 
             fetch(endpoint + articleID)
@@ -139,9 +163,7 @@
                     if (response.ok) {
                         statusMsg.className = 'success';
                         statusMsg.style.display = 'block';
-                        statusMsg.textContent = action === 'approve'
-                            ? '✅ Artikel godkendt! Den bliver nu oversat og publiceret.'
-                            : '❌ Artikel afvist. Den er flyttet til afvist/ mappen.';
+                        statusMsg.textContent = successMessage;
 
                         // Hide approval buttons
                         document.querySelector('.approval-bar').style.display = 'none';
